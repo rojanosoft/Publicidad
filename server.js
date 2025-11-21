@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs').promises;
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Servir archivos estáticos desde la carpeta public
 app.use(express.static('public'));
