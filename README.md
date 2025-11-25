@@ -73,3 +73,41 @@ npm start
 - Para producción, usa URLs firmadas o un CDN (CloudFront) y restringe acceso con políticas.
 
 Si quieres, puedo crear una política IAM mínima y los comandos exactos para crear un usuario que solo tenga `s3:ListBucket` y `s3:GetObject` sobre tu bucket.
+
+
+
+AWS S3
+IMPORTANT: no incluyas claves de acceso en repositorios públicos.
+
+Si por error subiste credenciales (Access Key / Secret) a este repositorio, debes rotarlas inmediatamente:
+
+1. Entra a la consola de AWS IAM.
+2. Localiza el usuario que corresponde a la Access Key comprometida.
+3. Elimina o desactiva la Access Key expuesta.
+4. Crea una nueva Access Key si la necesitas y configura esas credenciales como variables de entorno en el servidor (no en el repo).
+
+Comandos útiles (AWS CLI) para eliminar una access key:
+
+```powershell
+# elimina una access key para un usuario IAM
+aws iam delete-access-key --user-name <user-name> --access-key-id <ACCESS_KEY_ID>
+```
+
+Para probar la demo sin compartir credenciales, puedes usar un `manifest.json` público en tu bucket que liste las keys (o URLs) de los medios. Nuestro servidor soporta la variable de entorno `S3_MANIFEST_URL` para leer ese archivo público. Ejemplo de manifest (`manifest.json`):
+
+```json
+[
+	"images/1.jpg",
+	"videos/ad1.mp4",
+	"images/2.png"
+]
+```
+
+Si subes ese `manifest.json` al bucket y lo haces público, configura en el entorno del servidor:
+
+```
+S3_MANIFEST_URL=https://restaurante-joaos.s3.us-east-1.amazonaws.com/manifest.json
+S3_BASE_URL=https://restaurante-joaos.s3.us-east-1.amazonaws.com/
+```
+
+Con eso el servidor descargará el manifest público y lo usará para la reproducción sin necesitar credenciales.

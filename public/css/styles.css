@@ -1,0 +1,209 @@
+/* Global Styles */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Media Container */
+#mediaContainer {
+    width: calc(100vw - 260px);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-left: 260px;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+#mediaContainer.fullscreen {
+    width: 100vw;
+    margin-left: 0;
+}
+
+#currentMedia {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Sidebar */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 260px;
+    background: #111;
+    color: #fff;
+    padding: 10px;
+    overflow: auto;
+    z-index: 1000;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.5);
+}
+
+#sidebar h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#sidebar.hidden {
+    left: -260px;
+    display: none;
+}
+
+#sidebar hr {
+    border-color: #222;
+    margin: 15px 0;
+}
+
+/* Folders Container */
+#folders {
+    min-height: 50px;
+}
+
+#folders button {
+    display: block;
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 10px;
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: background 0.2s ease;
+    text-align: left;
+}
+
+#folders button:hover {
+    background: #333;
+    border-color: #555;
+}
+
+#folders button:active {
+    background: #444;
+}
+
+/* Refresh Button */
+#refreshFolders {
+    padding: 10px;
+    background: #444;
+    color: #fff;
+    border: 1px solid #555;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: background 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+#refreshFolders:hover {
+    background: #555;
+    border-color: #666;
+}
+
+#refreshFolders:active {
+    background: #666;
+}
+
+/* Fullscreen Button */
+#fullscreenBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 999;
+    padding: 10px 16px;
+    background: #444;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: background 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+#fullscreenBtn:hover {
+    background: #555;
+}
+
+#fullscreenBtn.exit-fullscreen {
+    background: #d44;
+}
+
+#fullscreenBtn.exit-fullscreen:hover {
+    background: #e55;
+}
+
+#fullscreenBtn.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Scrollbar Styling */
+#sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+    background: #111;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+#sidebar::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    #sidebar {
+        width: 200px;
+    }
+
+    #mediaContainer {
+        width: calc(100vw - 200px);
+    }
+
+    #mediaContainer.fullscreen {
+        width: 100vw;
+    }
+
+    #fullscreenBtn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    #sidebar {
+        width: 100vw;
+        transform: translateX(-100%);
+    }
+
+    #mediaContainer {
+        width: 100vw;
+        margin-left: 0;
+    }
+}
