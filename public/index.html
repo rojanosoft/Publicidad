@@ -59,40 +59,44 @@
         function showNext() {
             if (mediaFiles.length === 0) return;
 
-            const file = mediaFiles[currentIndex];
-            const extension = file.split('.').pop().toLowerCase();
+                const file = mediaFiles[currentIndex];
+                const extension = file.split('.').pop().toLowerCase();
 
-            // Limpiamos el contenedor
-            container.innerHTML = '';
+                // Limpiamos el contenedor
+                container.innerHTML = '';
 
-            if (videoExtensions.includes(extension)) {
-                // Es un video
-                const video = document.createElement('video');
-                video.id = 'currentMedia';
-                video.src = `/media/${file}`;
-                video.autoplay = true;
-                video.muted = true; // Necesario para autoplay en algunos navegadores
+                // Si el elemento es una URL absoluta (http/https), la usamos tal cual.
+                const src = /^https?:\/\//i.test(file) ? file : `/media/${file}`;
 
-                video.onended = () => {
-                    currentIndex = (currentIndex + 1) % mediaFiles.length;
-                    showNext();
-                };
+                if (videoExtensions.includes(extension)) {
+                    // Es un video
+                    const video = document.createElement('video');
+                    video.id = 'currentMedia';
+                    video.src = src;
+                    video.autoplay = true;
+                    video.muted = true; // Necesario para autoplay en algunos navegadores
+                    video.playsInline = true;
 
-                container.appendChild(video);
-            } else if (imageExtensions.includes(extension)) {
-                // Es una imagen
-                const img = document.createElement('img');
-                img.id = 'currentMedia';
-                img.src = `/media/${file}`;
-                img.alt = 'Media content';
-                container.appendChild(img);
+                    video.onended = () => {
+                        currentIndex = (currentIndex + 1) % mediaFiles.length;
+                        showNext();
+                    };
 
-                // Cambiar después de 10 segundos
-                setTimeout(() => {
-                    currentIndex = (currentIndex + 1) % mediaFiles.length;
-                    showNext();
-                }, 10000);
-            }
+                    container.appendChild(video);
+                } else if (imageExtensions.includes(extension)) {
+                    // Es una imagen
+                    const img = document.createElement('img');
+                    img.id = 'currentMedia';
+                    img.src = src;
+                    img.alt = 'Media content';
+                    container.appendChild(img);
+
+                    // Cambiar después de 10 segundos
+                    setTimeout(() => {
+                        currentIndex = (currentIndex + 1) % mediaFiles.length;
+                        showNext();
+                    }, 10000);
+                }
         }
 
         // Cargar archivos inicialmente
