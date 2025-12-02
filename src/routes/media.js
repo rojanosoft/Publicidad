@@ -27,14 +27,25 @@ router.get('/media-files', async (req, res) => {
 
         // Try S3 first if prefix is specified
         if (prefix) {
-            console.log('[/api/media/media-files] Using S3');
-            const mediaUrls = await listS3Media(prefix);
-            console.log(`[/api/media/media-files] Got ${mediaUrls.length} files from S3`);
-            return res.json(mediaUrls);
+            console.log('[/api/media/media-files] 📁 Using S3 to fetch media');
+            console.log(`[/api/media/media-files] S3 Config - Bucket: ${config.s3.bucket}, Region: ${config.s3.region}`);
+            try {
+                const mediaUrls = await listS3Media(prefix);
+                console.log(`[/api/media/media-files] ✅ Got ${mediaUrls.length} files from S3`);
+                return res.json(mediaUrls);
+            } catch (s3Error) {
+                console.error('[/api/media/media-files] ❌ S3 Error:', s3Error.message);
+                console.error('[/api/media/media-files] Error details:', s3Error);
+                return res.status(500).json({ 
+                    error: 'S3 Error',
+                    message: s3Error.message,
+                    details: s3Error.toString()
+                });
+            }
         }
 
         // Fallback to local media files
-        console.log('[/api/media/media-files] Fallback to local media');
+        console.log('[/api/media/media-files] 📂 Fallback to local media');
         const mediaPath = config.media.localMediaPath;
 
         if (!fs.existsSync(mediaPath)) {
@@ -56,8 +67,9 @@ router.get('/media-files', async (req, res) => {
         console.log(`[/api/media/media-files] Found ${mediaFiles.length} local files`);
         res.json(mediaFiles);
     } catch (error) {
-        console.error('[/api/media/media-files] Error:', error.message);
-        res.status(500).json({ error: error.message });
+        console.error('[/api/media/media-files] ❌ Unexpected Error:', error.message);
+        console.error('[/api/media/media-files] Stack:', error.stack);
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 });
 

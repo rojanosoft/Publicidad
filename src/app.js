@@ -10,11 +10,19 @@ console.log('Port:', process.env.PORT);
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const config = require('./config');
-console.log('Config loaded:', {
+console.log('✅ Config loaded:', {
     port: config.port,
     nodeEnv: config.nodeEnv,
     s3Bucket: config.s3.bucket,
     s3Region: config.s3.region,
+    awsKeysPresent: {
+        accessKeyId: config.aws.accessKeyId ? 'YES' : 'NO ❌',
+        secretAccessKey: config.aws.secretAccessKey ? 'YES' : 'NO ❌',
+    },
+    adminConfig: {
+        username: config.admin.username,
+        hasPassword: config.admin.password ? 'YES' : 'NO',
+    },
 });
 
 let mediaRoutes, adminRoutes;
