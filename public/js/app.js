@@ -19,23 +19,47 @@ const fullscreenBtn = document.getElementById('fullscreenBtn');
  */
 async function loadMediaFiles(prefix = '') {
     try {
+        console.log('=== [loadMediaFiles] START ===');
+        console.log('Input prefix:', JSON.stringify(prefix));
+        
         // Ensure prefix ends with / for S3
         const s3Prefix = prefix && !prefix.endsWith('/') ? prefix + '/' : prefix;
+        console.log('S3 Prefix (after formatting):', JSON.stringify(s3Prefix));
         
         const url = `/api/media/media-files?prefix=${encodeURIComponent(s3Prefix)}`;
-        console.log('[loadMediaFiles] Fetching:', url);
+        console.log('Full URL:', url);
+        console.log('Fetching from URL...');
+        
         const response = await fetch(url);
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
+        if (!response.ok) {
+            console.error('Response NOT ok. Status:', response.status);
+            const text = await response.text();
+            console.error('Response body:', text);
+            throw new Error(`HTTP ${response.status}: ${text}`);
+        }
+        
         mediaFiles = await response.json();
-        console.log('[loadMediaFiles] Got', mediaFiles.length, 'files');
+        console.log('Successfully parsed JSON. Got', mediaFiles.length, 'files');
+        console.log('Media files:', mediaFiles);
+        
         if (mediaFiles.length > 0) {
             currentIndex = 0;
+            console.log('Files found. Calling showNext()');
             showNext();
         } else {
+            console.log('No files found. Showing empty message');
             container.innerHTML = '<div style="color:#fff">No hay archivos en esta carpeta</div>';
         }
+        console.log('=== [loadMediaFiles] END ===');
     } catch (error) {
-        console.error('[loadMediaFiles] Error:', error);
-        container.innerHTML = '<div style="color:#f88">Error cargando archivos</div>';
+        console.error('=== [loadMediaFiles] ERROR ===');
+        console.error('Error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        container.innerHTML = '<div style="color:#f88">Error cargando archivos: ' + error.message + '</div>';
     }
 }
 
@@ -44,14 +68,22 @@ async function loadMediaFiles(prefix = '') {
  * @returns {Promise<Array>} Promise that resolves to array of folders
  */
 async function loadFolders() {
+    console.log('=== [loadFolders] START ===');
+    
     const el = document.getElementById('folders');
+    console.log('Folders element exists:', !!el);
     
     // Si no existe el elemento folders, solo cargar las carpetas sin mostrar
     if (!el) {
+        console.log('No folders element found. Loading folders silently...');
         try {
-            const resp = await fetch(`/api/media/s3-folders?prefix=`);
+            const url = `/api/media/s3-folders?prefix=`;
+            console.log('Fetching folders from:', url);
+            const resp = await fetch(url);
+            console.log('Folders response status:', resp.status);
             if (!resp.ok) throw new Error('No se pudo listar carpetas');
             const folders = await resp.json();
+            console.log('Got folders:', folders);
             return folders || [];
         } catch (err) {
             console.error('[loadFolders] Error:', err);
@@ -61,14 +93,24 @@ async function loadFolders() {
     
     el.innerHTML = 'Cargando...';
     try {
-        // Load top-level folders
-        const resp = await fetch(`/api/media/s3-folders?prefix=`);
+        console.log('Fetching top-level folders...');
+        const url = `/api/media/s3-folders?prefix=`;
+        console.log('URL:', url);
+        const resp = await fetch(url);
+        console.log('Response status:', resp.status);
+        console.log('Response ok:', resp.ok);
+        
         if (!resp.ok) throw new Error('No se pudo listar carpetas');
         const folders = await resp.json();
+        console.log('Got folders:', folders);
+        
         if (!folders || folders.length === 0) {
+            console.log('No folders found');
             el.innerHTML = '<div style="color:#888">No hay carpetas</div>';
             return [];
         }
+        
+        console.log('Rendering', folders.length, 'folder buttons');
         el.innerHTML = '';
         folders.forEach(f => {
             const btn = document.createElement('button');
@@ -98,9 +140,11 @@ async function loadFolders() {
             };
             el.appendChild(btn);
         });
+        console.log('=== [loadFolders] END (success) ===');
         return folders;
     } catch (err) {
         console.error('[loadFolders] Error:', err);
+        console.error('Error message:', err.message);
         el.innerHTML = '<div style="color:#f88">Error cargando carpetas</div>';
         return [];
     }
@@ -108,6 +152,10 @@ async function loadFolders() {
  * Display the next media file (image or video)
  */
 function showNext() {
+    console.log('=== [showNext] START ===');
+    console.log('Total media files:', mediaFiles.length);
+    console.log('Current index:', currentIndex);
+    
     if (mediaFiles.length === 0) {
         console.log('[showNext] No media files');
         return;
@@ -164,6 +212,15 @@ function showNext() {
         img.style.maxWidth = '100%';
         img.style.maxHeight = '100%';
         img.style.objectFit = 'contain';
+        
+        img.onerror = () => {
+            console.error('[img.onerror] Error loading image, src was:', src);
+        };
+        
+        img.onload = () => {
+            console.log('[img.onload] Image loaded successfully');
+        };
+        
         container.appendChild(img);
         console.log('[showNext] Image element added to container');
 
@@ -177,6 +234,7 @@ function showNext() {
         console.warn('[showNext] Unknown file type:', extension);
         container.innerHTML = '<div style="color:#fff">Tipo de archivo no soportado: ' + extension + '</div>';
     }
+    console.log('=== [showNext] END ===');
 }
 
 /**
@@ -248,24 +306,33 @@ function initFullscreenListeners() {
  * Initialize the application
  */
 function init() {
-    console.log('[init] Initializing application');
+    console.log('=== [init] STARTING APPLICATION ===');
+    console.log('Current folder:', currentFolder);
     
     // Update current folder display (solo si el elemento existe - para index.html)
     const currentFolderName = document.getElementById('currentFolderName');
     if (currentFolderName) {
+        console.log('Setting currentFolderName display');
         currentFolderName.textContent = currentFolder;
+    } else {
+        console.log('currentFolderName element not found (this is normal for index.html)');
     }
     
+    console.log('Loading folders...');
     // Load folders first
-    loadFolders().then(() => {
-        console.log('[init] Folders loaded, loading first folder media');
+    loadFolders().then((folders) => {
+        console.log('[init] Folders loaded:', folders);
+        console.log('[init] Now loading media from folder:', currentFolder);
         // Load media from current folder
         loadMediaFiles('publicidad/');
+    }).catch(err => {
+        console.error('[init] Error loading folders:', err);
     });
 
     // Setup event listeners
     const refreshFoldersBtn = document.getElementById('refreshFolders');
     if (refreshFoldersBtn) {
+        console.log('Setting up refresh button listener');
         refreshFoldersBtn.addEventListener('click', () => {
             console.log('[refresh] Refreshing folders');
             loadFolders();
@@ -281,7 +348,7 @@ function init() {
         loadFolders();
     }, 300000);
 
-    console.log('[init] Initialization complete');
+    console.log('=== [init] INITIALIZATION COMPLETE ===');
 }
 
 // Initialize when DOM is ready
