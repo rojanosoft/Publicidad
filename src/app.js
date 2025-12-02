@@ -3,11 +3,24 @@
  * Express server with S3 media management and carousel API
  */
 
+console.log('=== APP.JS LOADING ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Port:', process.env.PORT);
+
 const express = require('express');
 const fileUpload = require('express-fileupload');
 const config = require('./config');
+console.log('Config loaded:', {
+    port: config.port,
+    nodeEnv: config.nodeEnv,
+    s3Bucket: config.s3.bucket,
+    s3Region: config.s3.region,
+});
+
 const mediaRoutes = require('./routes/media');
 const adminRoutes = require('./routes/admin');
+
+console.log('Routes imported');
 
 // Initialize Express app
 const app = express();
@@ -18,6 +31,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
 app.use(express.static('public'));
 
+console.log('Middleware configured');
+
 // Logging middleware
 app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
@@ -25,8 +40,11 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+console.log('Mounting /api/media routes');
 app.use('/api/media', mediaRoutes);
+console.log('Mounting /api/admin routes');
 app.use('/api/admin', adminRoutes);
+console.log('Routes mounted successfully');
 
 // Health check endpoint
 app.get('/health', (req, res) => {

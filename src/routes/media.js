@@ -3,12 +3,16 @@
  * Endpoints for fetching media files and folder listings
  */
 
+console.log('=== MEDIA ROUTES LOADING ===');
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const config = require('../config');
 const { listS3Media, listS3Folders } = require('../services/s3Service');
+
+console.log('Media routes dependencies loaded');
 
 /**
  * GET /api/media/media-files
@@ -18,12 +22,14 @@ const { listS3Media, listS3Folders } = require('../services/s3Service');
 router.get('/media-files', async (req, res) => {
     try {
         const prefix = req.query.prefix || '';
+        console.log(`[/api/media/media-files] REQUEST RECEIVED`);
         console.log(`[/api/media/media-files] prefix="${prefix}"`);
 
         // Try S3 first if prefix is specified
         if (prefix) {
             console.log('[/api/media/media-files] Using S3');
             const mediaUrls = await listS3Media(prefix);
+            console.log(`[/api/media/media-files] Got ${mediaUrls.length} files from S3`);
             return res.json(mediaUrls);
         }
 
