@@ -17,8 +17,26 @@ console.log('Config loaded:', {
     s3Region: config.s3.region,
 });
 
-const mediaRoutes = require('./routes/media');
-const adminRoutes = require('./routes/admin');
+let mediaRoutes, adminRoutes;
+try {
+    console.log('Attempting to load ./routes/media...');
+    mediaRoutes = require('./routes/media');
+    console.log('✅ Media routes loaded successfully');
+} catch (error) {
+    console.error('❌ FAILED to load media routes:', error.message);
+    console.error(error.stack);
+    throw error;
+}
+
+try {
+    console.log('Attempting to load ./routes/admin...');
+    adminRoutes = require('./routes/admin');
+    console.log('✅ Admin routes loaded successfully');
+} catch (error) {
+    console.error('❌ FAILED to load admin routes:', error.message);
+    console.error(error.stack);
+    throw error;
+}
 
 console.log('Routes imported');
 
@@ -40,15 +58,38 @@ app.use((req, res, next) => {
 });
 
 // API Routes
-console.log('Mounting /api/media routes');
+console.log('=== ROUTE MOUNTING DEBUG ===');
+console.log('mediaRoutes type:', typeof mediaRoutes);
+console.log('mediaRoutes is router?:', mediaRoutes.constructor.name);
+console.log('adminRoutes type:', typeof adminRoutes);
+console.log('adminRoutes is router?:', adminRoutes.constructor.name);
+
+console.log('Mounting /api/media routes...');
 app.use('/api/media', mediaRoutes);
-console.log('Mounting /api/admin routes');
+console.log('/api/media mounted - Stack length:', app._router?.stack?.length);
+
+console.log('Mounting /api/admin routes...');
 app.use('/api/admin', adminRoutes);
+console.log('/api/admin mounted - Stack length:', app._router?.stack?.length);
+
 console.log('Routes mounted successfully');
 
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// 404 Debug handler - LOG ALL UNMATCHED ROUTES
+app.use((req, res) => {
+    console.log(`[404 DEBUG] No route matched for ${req.method} ${req.path}`);
+    console.log(`[404 DEBUG] Stack length: ${app._router?.stack?.length}`);
+    console.log(`[404 DEBUG] Query:`, req.query);
+    res.status(404).json({
+        error: 'Not Found',
+        path: req.path,
+        method: req.method,
+        message: 'No route matched this request'
+    });
 });
 
 // Error handling middleware
