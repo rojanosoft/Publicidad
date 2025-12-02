@@ -3,7 +3,11 @@
  * All environment-based settings and constants
  */
 
-require('dotenv').config();
+// dotenv solo se carga en desarrollo local
+// En Render y production, las variables vienen de Environment Variables
+if (process.env.NODE_ENV !== 'production') {
+    require('dotenv').config();
+}
 
 module.exports = {
     // Server
