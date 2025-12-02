@@ -19,10 +19,8 @@ const fullscreenBtn = document.getElementById('fullscreenBtn');
  */
 async function loadMediaFiles(prefix = '') {
     try {
-        // If no prefix provided, use current folder
-        const folderPrefix = prefix || currentFolder;
         // Ensure prefix ends with / for S3
-        const s3Prefix = folderPrefix.endsWith('/') ? folderPrefix : folderPrefix + '/';
+        const s3Prefix = prefix && !prefix.endsWith('/') ? prefix + '/' : prefix;
         
         const url = `/api/media/media-files?prefix=${encodeURIComponent(s3Prefix)}`;
         console.log('[loadMediaFiles] Fetching:', url);
@@ -47,6 +45,20 @@ async function loadMediaFiles(prefix = '') {
  */
 async function loadFolders() {
     const el = document.getElementById('folders');
+    
+    // Si no existe el elemento folders, solo cargar las carpetas sin mostrar
+    if (!el) {
+        try {
+            const resp = await fetch(`/api/media/s3-folders?prefix=`);
+            if (!resp.ok) throw new Error('No se pudo listar carpetas');
+            const folders = await resp.json();
+            return folders || [];
+        } catch (err) {
+            console.error('[loadFolders] Error:', err);
+            return [];
+        }
+    }
+    
     el.innerHTML = 'Cargando...';
     try {
         // Load top-level folders
@@ -238,28 +250,34 @@ function initFullscreenListeners() {
 function init() {
     console.log('[init] Initializing application');
     
-    // Update current folder display
-    document.getElementById('currentFolderName').textContent = currentFolder;
+    // Update current folder display (solo si el elemento existe - para index.html)
+    const currentFolderName = document.getElementById('currentFolderName');
+    if (currentFolderName) {
+        currentFolderName.textContent = currentFolder;
+    }
     
     // Load folders first
     loadFolders().then(() => {
         console.log('[init] Folders loaded, loading first folder media');
         // Load media from current folder
-        loadMediaFiles(currentFolder + '/');
+        loadMediaFiles('publicidad/');
     });
 
     // Setup event listeners
-    document.getElementById('refreshFolders').addEventListener('click', () => {
-        console.log('[refresh] Refreshing folders');
-        loadFolders();
-    });
+    const refreshFoldersBtn = document.getElementById('refreshFolders');
+    if (refreshFoldersBtn) {
+        refreshFoldersBtn.addEventListener('click', () => {
+            console.log('[refresh] Refreshing folders');
+            loadFolders();
+        });
+    }
 
     initFullscreenListeners();
 
     // Reload media list every 5 minutes to detect new files
     setInterval(() => {
         console.log('[interval] Refreshing media list');
-        loadMediaFiles(currentFolder + '/');
+        loadMediaFiles('publicidad/');
         loadFolders();
     }, 300000);
 
