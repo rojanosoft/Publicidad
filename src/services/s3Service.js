@@ -7,6 +7,8 @@ const {
     S3Client,
     ListObjectsV2Command,
     GetObjectCommand,
+    DeleteObjectCommand,
+    DeleteObjectsCommand,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const config = require('../config');
@@ -125,4 +127,112 @@ module.exports = {
     s3Client,
     listS3Media,
     listS3Folders,
+    listFolderContents,
+    deleteS3Object,
+    deleteFolderRecursive,
 };
+
+/**
+ * List all files in a folder (without subfolders)
+ * @param {string} prefix - Folder prefix
+ * @returns {Promise<Array>} Array of file objects {key, name, size, modified}
+ */
+async function listFolderContents(prefix = '') {
+    try {
+        console.log(`[s3Service.listFolderContents] Listing contents of prefix: "${prefix}"`);
+
+        const command = new ListObjectsV2Command({
+            Bucket: config.s3.bucket,
+            Prefix: prefix,
+            Delimiter: '/',
+        });
+
+        const response = await s3Client.send(command);
+
+        if (!response.Contents || response.Contents.length === 0) {
+            console.log(`[s3Service.listFolderContents] No files found`);
+            return [];
+        }
+
+        // Filter out folder marker (empty object ending with /)
+        const files = response.Contents
+            .filter(obj => !obj.Key.endsWith('/'))
+            .map(obj => ({
+                key: obj.Key,
+                name: obj.Key.split('/').pop(),
+                size: obj.Size,
+                modified: obj.LastModified,
+                sizeKB: Math.round(obj.Size / 1024),
+            }));
+
+        console.log(`[s3Service.listFolderContents] Found ${files.length} files`);
+        return files;
+    } catch (error) {
+        console.error('[s3Service.listFolderContents] Error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a single object from S3
+ * @param {string} key - Object key to delete
+ * @returns {Promise<boolean>} True if deleted
+ */
+async function deleteS3Object(key) {
+    try {
+        console.log(`[s3Service.deleteS3Object] Deleting: ${key}`);
+
+        const command = new DeleteObjectCommand({
+            Bucket: config.s3.bucket,
+            Key: key,
+        });
+
+        await s3Client.send(command);
+        console.log(`[s3Service.deleteS3Object] Deleted: ${key}`);
+        return true;
+    } catch (error) {
+        console.error('[s3Service.deleteS3Object] Error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Delete a folder and all its contents recursively
+ * @param {string} prefix - Folder prefix to delete
+ * @returns {Promise<number>} Number of objects deleted
+ */
+async function deleteFolderRecursive(prefix = '') {
+    try {
+        console.log(`[s3Service.deleteFolderRecursive] Deleting folder: "${prefix}"`);
+
+        // Ensure prefix ends with /
+        const folderPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
+
+        // List all objects in folder
+        const command = new ListObjectsV2Command({
+            Bucket: config.s3.bucket,
+            Prefix: folderPrefix,
+        });
+
+        const response = await s3Client.send(command);
+
+        if (!response.Contents || response.Contents.length === 0) {
+            console.log(`[s3Service.deleteFolderRecursive] Folder is empty`);
+            return 0;
+        }
+
+        // Delete all objects
+        const deletePromises = response.Contents.map(obj =>
+            deleteS3Object(obj.Key)
+        );
+
+        await Promise.all(deletePromises);
+
+        const count = response.Contents.length;
+        console.log(`[s3Service.deleteFolderRecursive] Deleted ${count} objects`);
+        return count;
+    } catch (error) {
+        console.error('[s3Service.deleteFolderRecursive] Error:', error);
+        throw error;
+    }
+}

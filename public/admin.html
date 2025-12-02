@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Sistema de Publicidad</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #ffebee;
+            border-radius: 5px;
+            border-left: 4px solid #d32f2f;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* Admin Panel Styles */
+        .admin-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+            display: none;
+        }
+
+        .admin-container.show {
+            display: block;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+        }
+
+        .admin-header h1 {
+            font-size: 28px;
+            color: #333;
+        }
+
+        .logout-btn {
+            background: #f44336;
+            padding: 10px 20px;
+            width: auto;
+        }
+
+        .logout-btn:hover {
+            background: #da190b;
+        }
+
+        .admin-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+        }
+
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar h3 {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+            margin-top: 0;
+        }
+
+        .main-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .section {
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input[type="text"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            padding: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .button-group button {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .success-message {
+            color: #388e3c;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            border-left: 4px solid #388e3c;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .folders-list {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 0;
+            max-height: 600px;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        .folder-item {
+            padding: 12px;
+            background: white;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .folder-item:hover {
+            background: #f0f4ff;
+        }
+
+        .folder-item.active {
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+            padding-left: 8px;
+        }
+
+        .folder-item span {
+            color: #333;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .folder-item button {
+            padding: 4px 8px;
+            font-size: 11px;
+            background: #f44336;
+            margin-left: 5px;
+            width: auto;
+        }
+
+        .files-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .files-table thead {
+            background: #f5f5f5;
+        }
+
+        .files-table th,
+        .files-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .files-table th {
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .files-table tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .no-content {
+            color: #999;
+            padding: 40px 20px;
+            text-align: center;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .btn-delete {
+            background: #f44336 !important;
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+            width: auto !important;
+        }
+
+        .btn-delete:hover {
+            background: #da190b !important;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 1024px) {
+            .admin-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-content {
+                grid-template-columns: 1fr;
+            }
+
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .admin-container {
+                padding: 20px;
+            }
+
+            .sidebar {
+                position: static;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Form -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-header">
+            <h1>🔐 Admin</h1>
+            <p>Sistema de Publicidad</p>
+        </div>
+        <div class="error-message" id="loginError"></div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <input type="text" id="username" required placeholder="admin">
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" required placeholder="•••••••">
+            </div>
+            <button type="submit">Iniciar Sesión</button>
+        </form>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="admin-container" id="adminContainer">
+        <div class="admin-header">
+            <h1>📊 Panel de Administración</h1>
+            <button class="logout-btn" id="logoutBtn">Cerrar Sesión</button>
+        </div>
+
+        <div class="admin-content">
+            <!-- Sidebar - Folders -->
+            <div class="sidebar">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3>📁 Carpetas</h3>
+                    <button onclick="showCreateFolderForm()" style="width: auto; padding: 6px 12px; font-size: 12px;">+</button>
+                </div>
+                <div class="folders-list" id="foldersList">
+                    Cargando carpetas...
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-sections">
+                <!-- Create Folder Section -->
+                <div class="section" id="createFolderSection" style="display: none;">
+                    <h2>📁 Crear Nueva Carpeta</h2>
+                    <form id="createFolderForm">
+                        <div class="form-group">
+                            <label for="folderName">Nombre de la carpeta</label>
+                            <input type="text" id="folderName" required placeholder="ej: promociones">
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Crear Carpeta</button>
+                            <button type="button" onclick="hideForms()" style="background: #999;">Cancelar</button>
+                        </div>
+                        <div class="success-message" id="folderSuccess"></div>
+                    </form>
+                </div>
+
+                <!-- Upload Section -->
+                <div class="section" id="uploadSection" style="display: none;">
+                    <h2>📤 Subir Archivo a <span id="uploadFolderName"></span></h2>
+                    <form id="uploadForm">
+                        <div class="form-group">
+                            <label for="fileInput">Selecciona archivo (imagen o video)</label>
+                            <input type="file" id="fileInput" required accept="image/*,video/*">
+                            <small style="color: #666; margin-top: 5px; display: block;">
+                                Formatos: JPG, PNG, GIF, MP4, WebM (Max 5GB)
+                            </small>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Subir Archivo</button>
+                            <button type="button" onclick="hideForms()" style="background: #999;">Cancelar</button>
+                        </div>
+                        <div class="success-message" id="uploadSuccess"></div>
+                    </form>
+                </div>
+
+                <!-- Folder Contents Section -->
+                <div class="section" id="contentsSection">
+                    <h2>📂 Contenido de <span id="currentFolderName">carpeta</span></h2>
+                    <div id="folderContents">
+                        <div class="no-content">Selecciona una carpeta para ver su contenido</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let authToken = localStorage.getItem('adminToken');
+        let currentFolder = null;
+
+        // Check if already logged in
+        if (authToken) {
+            showAdminPanel();
+            loadFolders();
+        }
+
+        // ============ LOGIN ============
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('loginError');
+
+            try {
+                errorEl.classList.remove('show');
+                const response = await fetch(`${API_BASE}/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                authToken = data.token;
+                localStorage.setItem('adminToken', authToken);
+                showAdminPanel();
+                loadFolders();
+                document.getElementById('loginForm').reset();
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.add('show');
+            }
+        });
+
+        // ============ LOGOUT ============
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            authToken = null;
+            localStorage.removeItem('adminToken');
+            document.getElementById('adminContainer').classList.remove('show');
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+            hideForms();
+        });
+
+        // ============ SHOW/HIDE FORMS ============
+        function showCreateFolderForm() {
+            document.getElementById('createFolderSection').style.display = 'block';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('contentsSection').style.display = 'none';
+            currentFolder = null;
+        }
+
+        function showUploadForm(folderName) {
+            currentFolder = folderName;
+            document.getElementById('uploadFolderName').textContent = folderName;
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('createFolderSection').style.display = 'none';
+            document.getElementById('contentsSection').style.display = 'none';
+        }
+
+        function showFolderContents(folderName) {
+            currentFolder = folderName;
+            document.getElementById('currentFolderName').textContent = folderName;
+            document.getElementById('contentsSection').style.display = 'block';
+            document.getElementById('createFolderSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+            loadFolderContents(folderName);
+        }
+
+        function hideForms() {
+            document.getElementById('createFolderSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('contentsSection').style.display = 'block';
+        }
+
+        // ============ CREATE FOLDER ============
+        document.getElementById('createFolderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const folderName = document.getElementById('folderName').value;
+            const successEl = document.getElementById('folderSuccess');
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/create-folder`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-token': authToken,
+                    },
+                    body: JSON.stringify({ folderName }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error);
+
+                successEl.textContent = `✓ Carpeta "${data.folderName}" creada exitosamente`;
+                successEl.classList.add('show');
+                document.getElementById('folderName').value = '';
+                setTimeout(() => {
+                    successEl.classList.remove('show');
+                    hideForms();
+                    loadFolders();
+                }, 1500);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        });
+
+        // ============ UPLOAD FILE ============
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = document.getElementById('fileInput').files[0];
+            const successEl = document.getElementById('uploadSuccess');
+
+            if (!currentFolder) {
+                alert('Selecciona una carpeta');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('folder', currentFolder);
+
+                const response = await fetch(`${API_BASE}/admin/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'x-admin-token': authToken,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error);
+
+                successEl.textContent = `✓ Archivo "${file.name}" subido exitosamente`;
+                successEl.classList.add('show');
+                document.getElementById('fileInput').value = '';
+                setTimeout(() => {
+                    successEl.classList.remove('show');
+                    loadFolderContents(currentFolder);
+                }, 1500);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        });
+
+        // ============ LOAD FOLDERS ============
+        async function loadFolders() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/folders`, {
+                    headers: { 'x-admin-token': authToken },
+                });
+
+                const folders = await response.json();
+                const foldersList = document.getElementById('foldersList');
+                foldersList.innerHTML = '';
+
+                if (folders.length === 0) {
+                    foldersList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">No hay carpetas</div>';
+                    return;
+                }
+
+                folders.forEach(folder => {
+                    const div = document.createElement('div');
+                    div.className = 'folder-item';
+                    div.onclick = () => showFolderContents(folder);
+                    div.innerHTML = `
+                        <span>📁 ${folder}</span>
+                        <button type="button" class="btn-delete" onclick="event.stopPropagation(); deleteFolder('${folder}')">🗑️</button>
+                    `;
+                    foldersList.appendChild(div);
+                });
+            } catch (err) {
+                console.error('Error loading folders:', err);
+            }
+        }
+
+        // ============ LOAD FOLDER CONTENTS ============
+        async function loadFolderContents(prefix) {
+            try {
+                const response = await fetch(`${API_BASE}/admin/folder-contents?prefix=${encodeURIComponent(prefix + '/')}`, {
+                    headers: { 'x-admin-token': authToken },
+                });
+
+                const files = await response.json();
+                const contentsDiv = document.getElementById('folderContents');
+
+                if (!files || files.length === 0) {
+                    contentsDiv.innerHTML = `
+                        <div class="no-content">
+                            Esta carpeta está vacía
+                            <div class="action-buttons" style="margin-top: 20px;">
+                                <button onclick="showUploadForm('${prefix}')">📤 Subir archivo</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `
+                    <div class="action-buttons">
+                        <button onclick="showUploadForm('${prefix}')">📤 Subir archivo</button>
+                    </div>
+                    <table class="files-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Tamaño</th>
+                                <th style="width: 100px;">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                files.forEach(file => {
+                    html += `
+                        <tr>
+                            <td>${file.name}</td>
+                            <td class="file-size">${formatFileSize(file.size)}</td>
+                            <td>
+                                <button type="button" class="btn-delete" onclick="deleteFile('${file.key.replace(/'/g, "\\'")}')">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 15px; color: #666; font-size: 12px;">
+                        Total: ${files.length} archivo(s)
+                    </p>
+                `;
+
+                contentsDiv.innerHTML = html;
+            } catch (err) {
+                console.error('Error loading folder contents:', err);
+                document.getElementById('folderContents').innerHTML = 
+                    '<div class="no-content">Error cargando contenido</div>';
+            }
+        }
+
+        // ============ DELETE FILE ============
+        async function deleteFile(fileKey) {
+            if (!confirm('¿Estás seguro de que deseas borrar este archivo?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/file?key=${encodeURIComponent(fileKey)}`, {
+                    method: 'DELETE',
+                    headers: { 'x-admin-token': authToken },
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error);
+
+                alert('Archivo borrado exitosamente');
+                loadFolderContents(currentFolder);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // ============ DELETE FOLDER ============
+        async function deleteFolder(folderName) {
+            if (!confirm(`¿Estás seguro de que deseas borrar la carpeta "${folderName}" y todo su contenido?`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/folder?prefix=${encodeURIComponent(folderName)}`, {
+                    method: 'DELETE',
+                    headers: { 'x-admin-token': authToken },
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) throw new Error(data.error);
+
+                alert(`Carpeta borrada exitosamente (${data.filesDeleted} archivo(s) eliminado(s))`);
+                currentFolder = null;
+                loadFolders();
+                document.getElementById('folderContents').innerHTML = 
+                    '<div class="no-content">Selecciona una carpeta para ver su contenido</div>';
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // ============ UTILITY FUNCTIONS ============
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function showAdminPanel() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('adminContainer').classList.add('show');
+        }
+    </script>
+</body>
+</html>

@@ -6,12 +6,12 @@ const videoExtensions = ['mp4', 'webm'];
 let mediaFiles = [];
 let currentIndex = 0;
 let isFullscreen = false;
+let currentFolder = 'publicidad'; // Track current folder
 
 // DOM Elements
 const container = document.getElementById('mediaContainer');
 const sidebar = document.getElementById('sidebar');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
-const refreshBtn = document.getElementById('refreshFolders');
 
 /**
  * Load media files from API
@@ -19,7 +19,12 @@ const refreshBtn = document.getElementById('refreshFolders');
  */
 async function loadMediaFiles(prefix = '') {
     try {
-    const url = prefix ? `/api/media/media-files?prefix=${encodeURIComponent(prefix)}` : '/api/media/media-files';
+        // If no prefix provided, use current folder
+        const folderPrefix = prefix || currentFolder;
+        // Ensure prefix ends with / for S3
+        const s3Prefix = folderPrefix.endsWith('/') ? folderPrefix : folderPrefix + '/';
+        
+        const url = `/api/media/media-files?prefix=${encodeURIComponent(s3Prefix)}`;
         console.log('[loadMediaFiles] Fetching:', url);
         const response = await fetch(url);
         mediaFiles = await response.json();
@@ -38,27 +43,46 @@ async function loadMediaFiles(prefix = '') {
 
 /**
  * Load list of folders from API
- * @param {string} prefix - Optional parent prefix
  * @returns {Promise<Array>} Promise that resolves to array of folders
  */
-async function loadFolders(prefix = '') {
+async function loadFolders() {
     const el = document.getElementById('folders');
     el.innerHTML = 'Cargando...';
     try {
-        const resp = await fetch(`/api/media/s3-folders?prefix=${encodeURIComponent(prefix)}`);
+        // Load top-level folders
+        const resp = await fetch(`/api/media/s3-folders?prefix=`);
         if (!resp.ok) throw new Error('No se pudo listar carpetas');
         const folders = await resp.json();
         if (!folders || folders.length === 0) {
-            el.innerHTML = '<div style="color:#888">No hay subcarpetas</div>';
+            el.innerHTML = '<div style="color:#888">No hay carpetas</div>';
             return [];
         }
         el.innerHTML = '';
         folders.forEach(f => {
             const btn = document.createElement('button');
             btn.textContent = f;
+            btn.className = currentFolder === f ? 'active' : '';
+            btn.style.display = 'block';
+            btn.style.width = '100%';
+            btn.style.padding = '10px';
+            btn.style.marginBottom = '5px';
+            btn.style.backgroundColor = currentFolder === f ? '#667eea' : '#333';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '4px';
+            btn.style.cursor = 'pointer';
+            btn.style.transition = 'all 0.3s';
+            btn.onmouseover = () => {
+                if (currentFolder !== f) btn.style.backgroundColor = '#444';
+            };
+            btn.onmouseout = () => {
+                if (currentFolder !== f) btn.style.backgroundColor = '#333';
+            };
             btn.onclick = () => {
                 console.log('[loadFolders] Selected folder:', f);
-                loadMediaFiles(f);
+                currentFolder = f;
+                loadFolders(); // Refresh folder list to show active state
+                loadMediaFiles(f + '/');
             };
             el.appendChild(btn);
         });
@@ -214,15 +238,18 @@ function initFullscreenListeners() {
 function init() {
     console.log('[init] Initializing application');
     
+    // Update current folder display
+    document.getElementById('currentFolderName').textContent = currentFolder;
+    
     // Load folders first
     loadFolders().then(() => {
         console.log('[init] Folders loaded, loading first folder media');
-        // If folders exist, load media from first folder (publicidad)
-        loadMediaFiles('publicidad/');
+        // Load media from current folder
+        loadMediaFiles(currentFolder + '/');
     });
 
     // Setup event listeners
-    refreshBtn.addEventListener('click', () => {
+    document.getElementById('refreshFolders').addEventListener('click', () => {
         console.log('[refresh] Refreshing folders');
         loadFolders();
     });
@@ -232,7 +259,7 @@ function init() {
     // Reload media list every 5 minutes to detect new files
     setInterval(() => {
         console.log('[interval] Refreshing media list');
-        loadMediaFiles('publicidad/');
+        loadMediaFiles(currentFolder + '/');
         loadFolders();
     }, 300000);
 

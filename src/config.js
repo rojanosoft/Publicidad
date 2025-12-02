@@ -24,11 +24,19 @@ module.exports = {
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     },
 
+    // Admin Authentication
+    admin: {
+        username: process.env.ADMIN_USERNAME || 'admin',
+        password: process.env.ADMIN_PASSWORD || 'admin123',
+        secret: process.env.ADMIN_SECRET || 'default_secret_key',
+    },
+
     // Media
     media: {
         imageExtensions: ['jpg', 'jpeg', 'png', 'gif'],
         videoExtensions: ['mp4', 'webm'],
         localMediaPath: './public/media',
+        maxFileSize: 5 * 1024 * 1024 * 1024, // 5GB max file size
     },
 
     // Logging
