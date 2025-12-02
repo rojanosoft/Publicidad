@@ -24,14 +24,21 @@ console.log('[s3Service] Config received:', {
 
 // Initialize S3 Client
 console.log('[s3Service] Initializing S3Client...');
-const s3Client = new S3Client({
-    region: config.s3.region,
-    credentials: {
-        accessKeyId: config.aws.accessKeyId,
-        secretAccessKey: config.aws.secretAccessKey,
-    },
-});
-console.log('[s3Service] ✅ S3Client initialized successfully');
+let s3Client;
+try {
+    s3Client = new S3Client({
+        region: config.s3.region,
+        credentials: {
+            accessKeyId: config.aws.accessKeyId,
+            secretAccessKey: config.aws.secretAccessKey,
+        },
+    });
+    console.log('[s3Service] ✅ S3Client initialized successfully');
+} catch (error) {
+    console.error('[s3Service] ❌ FAILED to initialize S3Client:', error.message);
+    console.error('[s3Service] Error stack:', error.stack);
+    throw error;
+}
 
 /**
  * List all media files (with presigned URLs if bucket is private)

@@ -309,6 +309,23 @@ function init() {
     console.log('=== [init] STARTING APPLICATION ===');
     console.log('Current folder:', currentFolder);
     
+    // Check if server is responding and routes are available
+    console.log('[init] Checking server health...');
+    fetch('/health')
+        .then(r => r.json())
+        .then(data => console.log('[init] ✅ Health check OK:', data))
+        .catch(e => console.error('[init] ❌ Health check FAILED:', e));
+    
+    // Check if debug routes endpoint exists
+    console.log('[init] Checking available routes...');
+    fetch('/debug/routes')
+        .then(r => r.json())
+        .then(data => {
+            console.log('[init] Available routes:', data);
+            console.table(data.routes);
+        })
+        .catch(e => console.error('[init] ❌ Routes debug endpoint failed:', e));
+    
     // Update current folder display (solo si el elemento existe - para index.html)
     const currentFolderName = document.getElementById('currentFolderName');
     if (currentFolderName) {

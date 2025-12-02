@@ -87,6 +87,36 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Diagnostic endpoint - LIST ALL ROUTES
+app.get('/debug/routes', (req, res) => {
+    const routes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            // Direct route
+            routes.push({
+                path: middleware.route.path,
+                methods: Object.keys(middleware.route.methods),
+            });
+        } else if (middleware.name === 'router') {
+            // Router middleware
+            middleware.handle.stack.forEach((handler) => {
+                if (handler.route) {
+                    routes.push({
+                        path: middleware.regexp.toString(),
+                        subPath: handler.route.path,
+                        methods: Object.keys(handler.route.methods),
+                    });
+                }
+            });
+        }
+    });
+    res.json({ 
+        message: 'All registered routes:',
+        stackLength: app._router?.stack?.length,
+        routes 
+    });
+});
+
 // 404 Debug handler - LOG ALL UNMATCHED ROUTES
 app.use((req, res) => {
     console.log(`[404 DEBUG] No route matched for ${req.method} ${req.path}`);

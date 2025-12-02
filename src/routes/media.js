@@ -9,10 +9,29 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const router = express.Router();
-const config = require('../config');
-const { listS3Media, listS3Folders } = require('../services/s3Service');
 
-console.log('Media routes dependencies loaded');
+console.log('[media.js] Loading config...');
+let config;
+try {
+    config = require('../config');
+    console.log('[media.js] ✅ Config loaded');
+} catch (error) {
+    console.error('[media.js] ❌ FAILED to load config:', error.message);
+    throw error;
+}
+
+console.log('[media.js] Loading s3Service...');
+let listS3Media, listS3Folders;
+try {
+    ({ listS3Media, listS3Folders } = require('../services/s3Service'));
+    console.log('[media.js] ✅ S3Service functions loaded');
+} catch (error) {
+    console.error('[media.js] ❌ FAILED to load s3Service:', error.message);
+    console.error('[media.js] Error details:', error);
+    throw error;
+}
+
+console.log('[media.js] ✅ All dependencies loaded successfully');
 
 /**
  * GET /api/media/media-files
