@@ -82,6 +82,7 @@ console.log('/api/admin mounted - Stack length:', app._router?.stack?.length);
 
 console.log('Routes mounted successfully');
 
+// DIRECT ROUTES (MUST BE BEFORE API ROUTES AND 404 HANDLER)
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -117,7 +118,7 @@ app.get('/debug/routes', (req, res) => {
     });
 });
 
-// 404 Debug handler - LOG ALL UNMATCHED ROUTES
+// 404 Debug handler - LOG ALL UNMATCHED ROUTES (MUST BE LAST MIDDLEWARE)
 app.use((req, res) => {
     console.log(`[404 DEBUG] No route matched for ${req.method} ${req.path}`);
     console.log(`[404 DEBUG] Stack length: ${app._router?.stack?.length}`);
@@ -130,7 +131,7 @@ app.use((req, res) => {
     });
 });
 
-// Error handling middleware
+// Error handling middleware (MUST BE LAST)
 app.use((err, req, res, _next) => {
     console.error('[Error]', err);
     res.status(500).json({
