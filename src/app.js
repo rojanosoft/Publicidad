@@ -146,6 +146,7 @@ app.listen(port, () => {
     console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║     Sistema de Publicidad - Advertising Display System     ║
+║           VERSION: 2025-12-03 - ROUTE FIX v2               ║
 ╠════════════════════════════════════════════════════════════╣
 ║ 🚀 Server running on port ${port}
 ║ 🌍 URL: http://localhost:${port}
@@ -153,6 +154,7 @@ app.listen(port, () => {
 ║ 🔒 Bucket Type: ${config.s3.isPublic ? 'PUBLIC' : 'PRIVATE'}
 ║ 📦 Environment: ${config.nodeEnv}
 ║ 🔐 Admin Panel: http://localhost:${port}/admin.html
+║ ✅ Direct routes (/health, /debug/routes) mounted BEFORE 404 handler
 ╚════════════════════════════════════════════════════════════╝
     `);
 });
