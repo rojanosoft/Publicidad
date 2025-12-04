@@ -3,13 +3,31 @@
  * All environment-based settings and constants
  */
 
+console.log('=== CONFIG.JS LOADING ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 // dotenv solo se carga en desarrollo local
 // En Render y production, las variables vienen de Environment Variables
 if (process.env.NODE_ENV !== 'production') {
+    console.log('[CONFIG] Loading dotenv (non-production)');
     require('dotenv').config();
+    console.log('[CONFIG] dotenv loaded');
+} else {
+    console.log('[CONFIG] Skipping dotenv (production mode)');
 }
 
-module.exports = {
+// Log environment variables for debugging
+console.log('[CONFIG] Environment Variables Check:');
+console.log('  - S3_BUCKET:', process.env.S3_BUCKET ? '✅ SET' : '❌ NOT SET');
+console.log('  - S3_REGION:', process.env.S3_REGION ? '✅ SET' : '❌ NOT SET');
+console.log('  - AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? '✅ SET' : '❌ NOT SET');
+console.log('  - AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? '✅ SET' : '❌ NOT SET');
+console.log('  - ADMIN_USERNAME:', process.env.ADMIN_USERNAME ? '✅ SET' : '❌ NOT SET');
+console.log('  - ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? '✅ SET' : '❌ NOT SET');
+console.log('  - ADMIN_SECRET:', process.env.ADMIN_SECRET ? '✅ SET' : '❌ NOT SET');
+console.log('  - PORT:', process.env.PORT ? '✅ SET' : '❌ NOT SET');
+
+const config = {
     // Server
     port: process.env.PORT || 3000,
     nodeEnv: process.env.NODE_ENV || 'development',
@@ -46,3 +64,13 @@ module.exports = {
     // Logging
     debug: process.env.DEBUG === 'true',
 };
+
+console.log('[CONFIG] Loaded configuration:', {
+    port: config.port,
+    nodeEnv: config.nodeEnv,
+    s3Bucket: config.s3.bucket,
+    s3Region: config.s3.region,
+    hasAWSKeys: !!config.aws.accessKeyId && !!config.aws.secretAccessKey,
+});
+
+module.exports = config;
