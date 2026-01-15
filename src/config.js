@@ -29,7 +29,7 @@ console.log('  - PORT:', process.env.PORT ? '✅ SET' : '❌ NOT SET');
 
 const config = {
     // Server
-    port: process.env.PORT || 3000,
+    port: process.env.PORT || 3001,
     nodeEnv: process.env.NODE_ENV || 'development',
 
     // AWS S3
