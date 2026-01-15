@@ -51,6 +51,47 @@ console.log('Routes imported');
 // Initialize Express app
 const app = express();
 
+// CRITICAL: Health check FIRST (before any other middleware)
+app.get('/health', (req, res) => {
+    console.log('[HEALTH] Health check requested');
+    res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        env: config.nodeEnv 
+    });
+});
+
+// Debug routes endpoint
+app.get('/debug/routes', (req, res) => {
+    console.log('[DEBUG] Routes listing requested');
+    const routes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            routes.push({
+                path: middleware.route.path,
+                methods: Object.keys(middleware.route.methods),
+            });
+        } else if (middleware.name === 'router') {
+            middleware.handle.stack.forEach((handler) => {
+                if (handler.route) {
+                    routes.push({
+                        path: middleware.regexp.toString(),
+                        subPath: handler.route.path,
+                        methods: Object.keys(handler.route.methods),
+                    });
+                }
+            });
+        }
+    });
+    res.json({ 
+        message: 'All registered routes:',
+        stackLength: app._router?.stack?.length,
+        routes 
+    });
+});
+
+console.log('✅ Health and debug routes registered');
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -81,42 +122,6 @@ app.use('/api/admin', adminRoutes);
 console.log('/api/admin mounted - Stack length:', app._router?.stack?.length);
 
 console.log('Routes mounted successfully');
-
-// DIRECT ROUTES (MUST BE BEFORE API ROUTES AND 404 HANDLER)
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Diagnostic endpoint - LIST ALL ROUTES
-app.get('/debug/routes', (req, res) => {
-    const routes = [];
-    app._router.stack.forEach((middleware) => {
-        if (middleware.route) {
-            // Direct route
-            routes.push({
-                path: middleware.route.path,
-                methods: Object.keys(middleware.route.methods),
-            });
-        } else if (middleware.name === 'router') {
-            // Router middleware
-            middleware.handle.stack.forEach((handler) => {
-                if (handler.route) {
-                    routes.push({
-                        path: middleware.regexp.toString(),
-                        subPath: handler.route.path,
-                        methods: Object.keys(handler.route.methods),
-                    });
-                }
-            });
-        }
-    });
-    res.json({ 
-        message: 'All registered routes:',
-        stackLength: app._router?.stack?.length,
-        routes 
-    });
-});
 
 // 404 Debug handler - LOG ALL UNMATCHED ROUTES (MUST BE LAST MIDDLEWARE)
 app.use((req, res) => {
