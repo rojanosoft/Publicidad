@@ -5,6 +5,9 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
+    "start:safe": "node start-safe.js",
+    "kill-port": "node kill-port.js",
+    "setup": "node -e \"console.log('Run setup.sh (Linux/Mac) or setup.bat (Windows) to configure the project')\"",
     "dev": "node src/app.js"
   },
   "dependencies": {

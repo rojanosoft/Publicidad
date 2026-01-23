@@ -145,10 +145,24 @@ app.use((err, req, res, _next) => {
     });
 });
 
-// Start server
-const port = config.port;
-app.listen(port, () => {
-    console.log(`
+// Handle uncaught errors to prevent crashes
+process.on('uncaughtException', (error) => {
+    console.error('[CRITICAL] Uncaught Exception:', error);
+    console.error('[CRITICAL] Stack:', error.stack);
+    // Don't exit immediately - log and continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled Promise Rejection at:', promise);
+    console.error('[CRITICAL] Reason:', reason);
+    // Don't exit - just log the error
+});
+
+// Start server ONLY if not being imported
+if (require.main === module) {
+    const port = config.port;
+    const server = app.listen(port, () => {
+        console.log(`
 ╔════════════════════════════════════════════════════════════╗
 ║     Sistema de Publicidad - Advertising Display System     ║
 ║           VERSION: 2025-12-03 - ROUTE FIX v2               ║
@@ -161,7 +175,43 @@ app.listen(port, () => {
 ║ 🔐 Admin Panel: http://localhost:${port}/admin.html
 ║ ✅ Direct routes (/health, /debug/routes) mounted BEFORE 404 handler
 ╚════════════════════════════════════════════════════════════╝
-    `);
-});
+        `);
+    });
+
+    // Handle server errors (like EADDRINUSE)
+    server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+            console.error(`
+❌ ERROR: Port ${port} is already in use!`);
+            console.error('Solutions:');
+            console.error('  1. Stop other instance: pkill -f "node.*app.js"');
+            console.error('  2. Find process: lsof -ti:' + port + ' | xargs kill -9');
+            console.error('  3. Change PORT in .env or environment variables');
+            console.error('\nExiting...\n');
+            process.exit(1);
+        } else {
+            console.error('[SERVER ERROR]', error);
+            process.exit(1);
+        }
+    });
+
+    // Graceful shutdown
+    const gracefulShutdown = () => {
+        console.log('\n[SHUTDOWN] Received shutdown signal...');
+        server.close(() => {
+            console.log('[SHUTDOWN] Server closed gracefully');
+            process.exit(0);
+        });
+        
+        // Force close after 10 seconds
+        setTimeout(() => {
+            console.error('[SHUTDOWN] Forcing shutdown after timeout');
+            process.exit(1);
+        }, 10000);
+    };
+
+    process.on('SIGTERM', gracefulShutdown);
+    process.on('SIGINT', gracefulShutdown);
+}
 
 module.exports = app;

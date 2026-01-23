@@ -10,6 +10,8 @@ Media carousel system (images/videos) with AWS S3 storage backend and responsive
 - **config.js**: Centralized environment config. Loads dotenv ONLY in non-production (Render uses env vars directly)
 - **routes/**: Express routers exported and mounted with `/api/*` prefix
 - **services/s3Service.js**: AWS SDK v3 client operations (ListObjectsV2, presigned URLs)
+- **server.js** (root): Legacy entry point that delegates to `src/app.js` for backwards compatibility
+- **check-server.js**: Diagnostic script to verify environment variables and file structure before deployment
 
 ### Frontend Architecture (public/)
 - **index.html**: Single-page structure with fullscreen container
@@ -30,6 +32,7 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 - **Production**: Environment variables set in Render dashboard (see [render.yaml](render.yaml))
 - **Config Access**: Always import from `require('./config')`, never read `process.env` directly in business logic
 - **AWS Credentials**: NEVER commit to git. Use `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars
+- **PORT is REQUIRED**: No fallback - must be set in `.env` file (e.g., `PORT=3001`). App will exit if not set.
 
 ### S3 Service Patterns
 - Presigned URL generation required when `S3_PUBLIC=false` (default for security)
@@ -38,16 +41,20 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 - Prefix handling: Always ensure trailing `/` for S3 folder prefixes
 
 ### Debugging & Logging
-- Extensive console.log statements are intentional - this is a deployment-heavy project
-- Format: `console.log('[module.function] message')` for grep-ability
+- **Extensive console.log statements are intentional** - this is a deployment-heavy project with tricky S3 integration
+- Format: `console.log('[module.function] message')` for grep-ability (e.g., `[s3Service.listS3Media]`)
+- Module load logging: Every module logs `=== MODULE_NAME LOADING ===` at top (see [s3Service.js](src/services/s3Service.js#L7))
+- Config verification: [config.js](src/config.js#L20-L27) logs all env vars with ✅/❌ indicators
 - Debug route: `GET /debug/routes` lists all registered Express routes
 - Route registration logs stack length at each mount point for troubleshooting
+- Use [check-server.js](check-server.js) before deployment to verify environment setup
 
 ### Admin Authentication
-- JWT-based with `authMiddleware` (see [authMiddleware.js](src/middleware/authMiddleware.js))
-- Token passed via `x-admin-token` header
+- **NOT true JWT** - uses base64-encoded token: `username:timestamp:secret` with 24hr expiry (see [authService.js](src/services/authService.js#L26-L29))
+- Token validation in `authMiddleware` checks `x-admin-token` header or `adminToken` cookie
 - Admin routes under `/api/admin/*` (login, upload, create-folder, delete)
 - Credentials: `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `ADMIN_SECRET` from env
+- TODO: Migrate to proper JWT library (jsonwebtoken) in production
 
 ## Common Tasks
 
@@ -69,15 +76,22 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 
 ### Running Locally
 ```powershell
-npm install
-npm start  # Runs node src/app.js on PORT=3001
+node check-server.js  # Optional: verify env vars and file structure
+npm run kill-port     # Kill any process on PORT if EADDRINUSE error
+npm run start:safe    # Recommended: Auto-kills port conflicts and starts
+npm start             # Standard: Runs node src/app.js on PORT=3001 (default)
 ```
 Open `http://localhost:3001` - carousel auto-starts on page load
 
-### Deployment (Render.com)
-- Config: [render.yaml](render.yaml) defines service and env vars
-- Set all env vars in Render dashboard (S3_BUCKET, AWS keys, ADMIN credentials)
+**Note**: [package.json](package.json) defines `start` as `node src/app.js` (preferred) but `server.js` at root also works (legacy)
+
+**EADDRINUSE Fix**: If port is already in use, use `npm run kill-port [port]` or `npm run start:safe` which auto-resolves conflicts
+
+### Deployment
+- **Render.com**: Config in [render.yaml](render.yaml) (if file exists), set env vars in dashboard
+- **Serverless/Vercel**: [api/index.js](api/index.js) exports Express app for serverless functions
 - Start command: `npm start` (runs [src/app.js](src/app.js))
+- Environment variables MUST be set in hosting platform (never in code)
 - See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full deployment guide
 
 ## File Size & Media Limits
@@ -87,8 +101,9 @@ Open `http://localhost:3001` - carousel auto-starts on page load
 ## Security Notes
 - S3 bucket is private by default (`S3_PUBLIC=false`)
 - Admin password stored in plain env var (TODO: migrate to database with bcrypt)
-- JWT secret in `ADMIN_SECRET` env var - rotate in production
+- Token secret in `ADMIN_SECRET` env var - rotate in production (NOTE: current auth is NOT true JWT)
 - **IMPORTANT**: If AWS credentials leaked to repo, immediately revoke via IAM console
+- Database config exists in [.env.example](.env.example) (PostgreSQL) but is NOT currently used in app
 
 ## Documentation Structure
 - [README.md](README.md): User-facing setup, S3 bucket creation commands

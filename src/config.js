@@ -29,7 +29,7 @@ console.log('  - PORT:', process.env.PORT ? '✅ SET' : '❌ NOT SET');
 
 const config = {
     // Server
-    port: process.env.PORT || 3001,
+    port: process.env.PORT,  // Must be set in .env - no fallback
     nodeEnv: process.env.NODE_ENV || 'development',
 
     // AWS S3
@@ -64,6 +64,14 @@ const config = {
     // Logging
     debug: process.env.DEBUG === 'true',
 };
+
+// Validate required configuration
+if (!config.port) {
+    console.error('\n❌ CRITICAL ERROR: PORT is not set in environment variables!');
+    console.error('Please set PORT in your .env file (e.g., PORT=3001)');
+    console.error('Or set it as an environment variable before starting the server.\n');
+    process.exit(1);
+}
 
 console.log('[CONFIG] Loaded configuration:', {
     port: config.port,

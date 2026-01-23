@@ -116,12 +116,13 @@ router.post('/upload', authMiddleware, async (req, res) => {
         const uniqueFilename = `${Date.now()}_${file.name}`;
         const s3Key = `${folder}/${uniqueFilename}`;
 
-        // Upload to S3
+        // Upload to S3 - use Buffer to avoid stream warnings
         const uploadCommand = new PutObjectCommand({
             Bucket: config.s3.bucket,
             Key: s3Key,
-            Body: file.data,
+            Body: Buffer.from(file.data),  // Convert to Buffer to avoid AWS SDK warning
             ContentType: file.mimetype,
+            ContentLength: file.size,  // Explicitly set content length
         });
 
         await s3Client.send(uploadCommand);
