@@ -2,6 +2,13 @@
 const imageExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 const videoExtensions = ['mp4', 'webm'];
 
+// Get base path from global variable (set in HTML)
+const BASE_PATH = window.BASE_PATH || '/';
+const API_BASE = BASE_PATH === '/' ? '/api' : `${BASE_PATH}api`;
+
+console.log('[app.js] BASE_PATH:', BASE_PATH);
+console.log('[app.js] API_BASE:', API_BASE);
+
 // State
 let mediaFiles = [];
 let currentIndex = 0;
@@ -26,7 +33,7 @@ async function loadMediaFiles(prefix = '') {
         const s3Prefix = prefix && !prefix.endsWith('/') ? prefix + '/' : prefix;
         console.log('S3 Prefix (after formatting):', JSON.stringify(s3Prefix));
         
-        const url = `/api/media/media-files?prefix=${encodeURIComponent(s3Prefix)}`;
+        const url = `${API_BASE}/media/media-files?prefix=${encodeURIComponent(s3Prefix)}`;
         console.log('Full URL:', url);
         console.log('Fetching from URL...');
         
@@ -77,7 +84,7 @@ async function loadFolders() {
     if (!el) {
         console.log('No folders element found. Loading folders silently...');
         try {
-            const url = `/api/media/s3-folders?prefix=`;
+            const url = `${API_BASE}/media/s3-folders?prefix=`;
             console.log('Fetching folders from:', url);
             const resp = await fetch(url);
             console.log('Folders response status:', resp.status);
@@ -94,7 +101,7 @@ async function loadFolders() {
     el.innerHTML = 'Cargando...';
     try {
         console.log('Fetching top-level folders...');
-        const url = `/api/media/s3-folders?prefix=`;
+        const url = `${API_BASE}/media/s3-folders?prefix=`;
         console.log('URL:', url);
         const resp = await fetch(url);
         console.log('Response status:', resp.status);

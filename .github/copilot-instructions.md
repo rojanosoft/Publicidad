@@ -33,6 +33,7 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 - **Config Access**: Always import from `require('./config')`, never read `process.env` directly in business logic
 - **AWS Credentials**: NEVER commit to git. Use `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars
 - **PORT is REQUIRED**: No fallback - must be set in `.env` file (e.g., `PORT=3001`). App will exit if not set.
+- **BASE_PATH (optional)**: For subdirectory deployment (e.g., `BASE_PATH=/publicidad` for dominio.com/publicidad). Leave empty for root deployment.
 
 ### S3 Service Patterns
 - Presigned URL generation required when `S3_PUBLIC=false` (default for security)

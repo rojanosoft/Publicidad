@@ -96,7 +96,16 @@ console.log('✅ Health and debug routes registered');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
-app.use(express.static('public'));
+
+// Serve static files with base path support
+console.log('[app.js] Setting up static files...');
+if (config.basePath) {
+    console.log(`[app.js] Using BASE_PATH: ${config.basePath}`);
+    app.use(config.basePath, express.static('public'));
+} else {
+    console.log('[app.js] No BASE_PATH - serving from root');
+    app.use(express.static('public'));
+}
 
 console.log('Middleware configured');
 
@@ -113,13 +122,17 @@ console.log('mediaRoutes is router?:', mediaRoutes.constructor.name);
 console.log('adminRoutes type:', typeof adminRoutes);
 console.log('adminRoutes is router?:', adminRoutes.constructor.name);
 
+// Mount API routes with base path support
+const apiPrefix = config.basePath ? `${config.basePath}/api` : '/api';
+console.log(`[app.js] API routes will be mounted at: ${apiPrefix}`);
+
 console.log('Mounting /api/media routes...');
-app.use('/api/media', mediaRoutes);
-console.log('/api/media mounted - Stack length:', app._router?.stack?.length);
+app.use(`${apiPrefix}/media`, mediaRoutes);
+console.log(`/api/media mounted at ${apiPrefix}/media - Stack length:`, app._router?.stack?.length);
 
 console.log('Mounting /api/admin routes...');
-app.use('/api/admin', adminRoutes);
-console.log('/api/admin mounted - Stack length:', app._router?.stack?.length);
+app.use(`${apiPrefix}/admin`, adminRoutes);
+console.log(`/api/admin mounted at ${apiPrefix}/admin - Stack length:`, app._router?.stack?.length);
 
 console.log('Routes mounted successfully');
 

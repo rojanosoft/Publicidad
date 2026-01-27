@@ -31,6 +31,7 @@ const config = {
     // Server
     port: process.env.PORT,  // Must be set in .env - no fallback
     nodeEnv: process.env.NODE_ENV || 'development',
+    basePath: process.env.BASE_PATH || '',  // Base path for subdirectory deployment (e.g., '/publicidad')
 
     // AWS S3
     s3: {

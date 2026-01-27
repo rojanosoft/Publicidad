@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 module.exports = {
   apps: [{
     name: 'publicidad',
@@ -15,15 +18,33 @@ module.exports = {
     // Resource limits
     max_memory_restart: '500M',  // Restart if memory exceeds 500MB
     
-    // Environment variables
-    // NOTE: PORT is read from .env file or system environment
-    // Do NOT hardcode PORT here - it must come from .env
+    // Environment variables - loaded from .env file
     env: {
-      NODE_ENV: 'production'
+      NODE_ENV: 'production',
+      PORT: process.env.PORT,
+      S3_BUCKET: process.env.S3_BUCKET,
+      S3_REGION: process.env.S3_REGION,
+      S3_PUBLIC: process.env.S3_PUBLIC,
+      S3_SIGNED_EXPIRES: process.env.S3_SIGNED_EXPIRES,
+      AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+      AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+      ADMIN_USERNAME: process.env.ADMIN_USERNAME,
+      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+      ADMIN_SECRET: process.env.ADMIN_SECRET
     },
     env_development: {
       NODE_ENV: 'development',
-      DEBUG: 'true'
+      DEBUG: 'true',
+      PORT: process.env.PORT,
+      S3_BUCKET: process.env.S3_BUCKET,
+      S3_REGION: process.env.S3_REGION,
+      S3_PUBLIC: process.env.S3_PUBLIC,
+      S3_SIGNED_EXPIRES: process.env.S3_SIGNED_EXPIRES,
+      AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
+      AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
+      ADMIN_USERNAME: process.env.ADMIN_USERNAME,
+      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+      ADMIN_SECRET: process.env.ADMIN_SECRET
     },
     
     // Logging
