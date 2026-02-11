@@ -4,7 +4,8 @@
  */
 
 const express = require('express');
-const { PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { PutObjectCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const router = express.Router();
 const config = require('../config');
 const { s3Client, listFolderContents, deleteS3Object, deleteFolderRecursive } = require('../services/s3Service');
@@ -41,14 +42,14 @@ router.post('/login', (req, res) => {
 
 /**
  * POST /api/admin/create-folder
- * Create a new folder in S3
- * Body: { folderName }
+ * Create a new folder in S3 (supports subfolder creation)
+ * Body: { folderName, parentPath }
  * Header: x-admin-token
  */
 router.post('/create-folder', authMiddleware, async (req, res) => {
     try {
-        const { folderName } = req.body;
-        console.log(`[/api/admin/create-folder] Creating folder: ${folderName}`);
+        const { folderName, parentPath } = req.body;
+        console.log(`[/api/admin/create-folder] Creating folder: ${folderName} in parent: ${parentPath || 'root'}`);
 
         if (!folderName) {
             return res.status(400).json({ error: 'Folder name required' });
@@ -56,7 +57,15 @@ router.post('/create-folder', authMiddleware, async (req, res) => {
 
         // Sanitize folder name
         const sanitized = folderName.replace(/[^a-zA-Z0-9-_]/g, '_').toLowerCase();
-        const folderKey = `${sanitized}/`;
+        
+        // Build full path
+        let folderKey;
+        if (parentPath && parentPath.trim() !== '') {
+            const normalizedParent = parentPath.endsWith('/') ? parentPath : `${parentPath}/`;
+            folderKey = `${normalizedParent}${sanitized}/`;
+        } else {
+            folderKey = `${sanitized}/`;
+        }
 
         // Create empty marker object
         const command = new PutObjectCommand({
@@ -68,7 +77,7 @@ router.post('/create-folder', authMiddleware, async (req, res) => {
         await s3Client.send(command);
         console.log(`[/api/admin/create-folder] Folder created: ${folderKey}`);
 
-        res.json({ message: 'Folder created successfully', folderName: sanitized });
+        res.json({ message: 'Folder created successfully', folderName: sanitized, fullPath: folderKey });
     } catch (error) {
         console.error('[/api/admin/create-folder] Error:', error.message);
         res.status(500).json({ error: error.message });
@@ -141,22 +150,34 @@ router.post('/upload', authMiddleware, async (req, res) => {
 
 /**
  * GET /api/admin/folders
- * List all folders in S3
+ * List all folders in S3 at a specific path level
+ * Query param: prefix (optional) - parent folder path
  * Header: x-admin-token
  */
 router.get('/folders', authMiddleware, async (req, res) => {
     try {
-        console.log('[/api/admin/folders] Listing all folders');
+        const prefix = req.query.prefix || '';
+        console.log(`[/api/admin/folders] Listing folders at path: "${prefix}"`);
+
+        const normalizedPrefix = prefix && !prefix.endsWith('/') ? `${prefix}/` : prefix;
 
         const command = new ListObjectsV2Command({
             Bucket: config.s3.bucket,
+            Prefix: normalizedPrefix,
             Delimiter: '/',
         });
 
         const response = await s3Client.send(command);
 
         const folders = response.CommonPrefixes
-            ? response.CommonPrefixes.map(cp => cp.Prefix.replace(/\/$/, ''))
+            ? response.CommonPrefixes.map(cp => {
+                const fullPath = cp.Prefix.replace(/\/$/, '');
+                const folderName = fullPath.substring(normalizedPrefix.length).replace(/\/$/, '');
+                return {
+                    name: folderName,
+                    fullPath: fullPath
+                };
+            })
             : [];
 
         console.log(`[/api/admin/folders] Found ${folders.length} folders`);
@@ -169,7 +190,7 @@ router.get('/folders', authMiddleware, async (req, res) => {
 
 /**
  * GET /api/admin/folder-contents
- * List all files in a folder
+ * List all files in a folder (now returns both files AND subfolders)
  * Query param: prefix (required) - folder prefix
  * Header: x-admin-token
  */
@@ -182,9 +203,70 @@ router.get('/folder-contents', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Prefix parameter required' });
         }
 
-        const files = await listFolderContents(prefix);
-        console.log(`[/api/admin/folder-contents] Found ${files.length} files`);
-        res.json(files);
+        const normalizedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
+
+        const command = new ListObjectsV2Command({
+            Bucket: config.s3.bucket,
+            Prefix: normalizedPrefix,
+            Delimiter: '/',
+        });
+
+        const response = await s3Client.send(command);
+
+        // Get subfolders
+        const subfolders = response.CommonPrefixes
+            ? response.CommonPrefixes.map(cp => {
+                const fullPath = cp.Prefix.replace(/\/$/, '');
+                const folderName = fullPath.substring(normalizedPrefix.length);
+                return {
+                    type: 'folder',
+                    name: folderName,
+                    fullPath: fullPath
+                };
+            })
+            : [];
+
+        // Get files with presigned URLs if needed
+        let files = [];
+        if (response.Contents) {
+            files = await Promise.all(
+                response.Contents
+                    .filter(obj => !obj.Key.endsWith('/'))
+                    .map(async obj => {
+                        let url = '';
+                        
+                        // Generate presigned URL if bucket is private
+                        if (!config.s3.isPublic) {
+                            const getCommand = new GetObjectCommand({
+                                Bucket: config.s3.bucket,
+                                Key: obj.Key,
+                            });
+                            url = await getSignedUrl(s3Client, getCommand, { expiresIn: 3600 }); // 1 hour
+                        } else {
+                            // Direct URL for public buckets
+                            url = `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${obj.Key}`;
+                        }
+
+                        return {
+                            type: 'file',
+                            key: obj.Key,
+                            name: obj.Key.split('/').pop(),
+                            size: obj.Size,
+                            modified: obj.LastModified,
+                            url: url
+                        };
+                    })
+            );
+        }
+
+        const result = {
+            subfolders,
+            files,
+            total: subfolders.length + files.length
+        };
+
+        console.log(`[/api/admin/folder-contents] Found ${subfolders.length} subfolders and ${files.length} files`);
+        res.json(result);
     } catch (error) {
         console.error('[/api/admin/folder-contents] Error:', error.message);
         res.status(500).json({ error: error.message });

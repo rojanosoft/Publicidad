@@ -124,6 +124,76 @@ body {
     min-height: 50px;
 }
 
+/* Breadcrumb Navigation */
+#breadcrumb {
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(68, 68, 68, 0.8) 0%, rgba(51, 51, 51, 0.8) 100%);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: nowrap;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.5) rgba(255, 255, 255, 0.1);
+}
+
+#breadcrumb::-webkit-scrollbar {
+    height: 4px;
+}
+
+#breadcrumb::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+}
+
+#breadcrumb::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 2px;
+}
+
+#breadcrumb::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.7);
+}
+
+#breadcrumb span {
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+#breadcrumb span[onclick]:hover {
+    text-decoration: underline;
+    transform: scale(1.05);
+}
+
+/* Back Button */
+#backButton {
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 10px;
+    font-size: 13px;
+    background: linear-gradient(135deg, #555 0%, #444 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+}
+
+#backButton:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
+}
+
+#backButton:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
 #currentFolderInfo {
     padding: 16px;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);

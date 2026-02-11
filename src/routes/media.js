@@ -21,9 +21,9 @@ try {
 }
 
 console.log('[media.js] Loading s3Service...');
-let listS3Media, listS3Folders;
+let listS3Media, listS3Folders, s3Client;
 try {
-    ({ listS3Media, listS3Folders } = require('../services/s3Service'));
+    ({ listS3Media, listS3Folders, s3Client } = require('../services/s3Service'));
     console.log('[media.js] ✅ S3Service functions loaded');
 } catch (error) {
     console.error('[media.js] ❌ FAILED to load s3Service:', error.message);
@@ -41,34 +41,25 @@ console.log('[media.js] ✅ All dependencies loaded successfully');
 router.get('/media-files', async (req, res) => {
     try {
         const prefix = req.query.prefix || '';
-        console.log(`[/api/media/media-files] REQUEST RECEIVED`);
-        console.log(`[/api/media/media-files] prefix="${prefix}"`);
 
         // Try S3 first if prefix is specified
         if (prefix) {
-            console.log('[/api/media/media-files] 📁 Using S3 to fetch media');
-            console.log(`[/api/media/media-files] S3 Config - Bucket: ${config.s3.bucket}, Region: ${config.s3.region}`);
             try {
                 const mediaUrls = await listS3Media(prefix);
-                console.log(`[/api/media/media-files] ✅ Got ${mediaUrls.length} files from S3`);
                 return res.json(mediaUrls);
             } catch (s3Error) {
-                console.error('[/api/media/media-files] ❌ S3 Error:', s3Error.message);
-                console.error('[/api/media/media-files] Error details:', s3Error);
+                console.error('[/api/media/media-files] S3 Error:', s3Error.message);
                 return res.status(500).json({ 
                     error: 'S3 Error',
-                    message: s3Error.message,
-                    details: s3Error.toString()
+                    message: s3Error.message
                 });
             }
         }
 
         // Fallback to local media files
-        console.log('[/api/media/media-files] 📂 Fallback to local media');
         const mediaPath = config.media.localMediaPath;
 
         if (!fs.existsSync(mediaPath)) {
-            console.log('[/api/media/media-files] Local media path does not exist');
             return res.json([]);
         }
 
@@ -83,11 +74,9 @@ router.get('/media-files', async (req, res) => {
             return allowedExtensions.includes(ext);
         });
 
-        console.log(`[/api/media/media-files] Found ${mediaFiles.length} local files`);
         res.json(mediaFiles);
     } catch (error) {
-        console.error('[/api/media/media-files] ❌ Unexpected Error:', error.message);
-        console.error('[/api/media/media-files] Stack:', error.stack);
+        console.error('[/api/media/media-files] Error:', error.message);
         res.status(500).json({ error: error.message, stack: error.stack });
     }
 });
@@ -100,9 +89,29 @@ router.get('/media-files', async (req, res) => {
 router.get('/s3-folders', async (req, res) => {
     try {
         const prefix = req.query.prefix || '';
-        console.log(`[/api/media/s3-folders] prefix="${prefix}"`);
+        const { ListObjectsV2Command } = require('@aws-sdk/client-s3');
 
-        const folders = await listS3Folders(prefix);
+        const normalizedPrefix = prefix && !prefix.endsWith('/') ? `${prefix}/` : prefix;
+
+        const command = new ListObjectsV2Command({
+            Bucket: config.s3.bucket,
+            Prefix: normalizedPrefix,
+            Delimiter: '/',
+        });
+
+        const response = await s3Client.send(command);
+
+        const folders = response.CommonPrefixes
+            ? response.CommonPrefixes.map(cp => {
+                const fullPath = cp.Prefix.replace(/\/$/, '');
+                const folderName = fullPath.substring(normalizedPrefix.length).replace(/\/$/, '');
+                return {
+                    name: folderName,
+                    fullPath: fullPath
+                };
+            })
+            : [];
+
         res.json(folders);
     } catch (error) {
         console.error('[/api/media/s3-folders] Error:', error.message);

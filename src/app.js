@@ -8,6 +8,8 @@ console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('Port:', process.env.PORT);
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const fileUpload = require('express-fileupload');
 const config = require('./config');
 console.log('✅ Config loaded:', {
@@ -91,6 +93,58 @@ app.get('/debug/routes', (req, res) => {
 });
 
 console.log('✅ Health and debug routes registered');
+
+// Helper function to serve HTML with BASE_PATH injected
+function serveHtmlWithBasePath(htmlFile, basePath = '') {
+    return (req, res) => {
+        try {
+            // Ensure BASE_PATH ends with / if not empty, and is not the root
+            let baseProp = basePath;
+            if (baseProp && !baseProp.endsWith('/')) {
+                baseProp += '/';
+            }
+            
+            let htmlContent = fs.readFileSync(path.join(__dirname, `../public/${htmlFile}`), 'utf8');
+            
+            // Replace base href with correct BASE_PATH
+            htmlContent = htmlContent.replace(
+                /<base[^>]*href="[^"]*"/,
+                `<base id="basePathTag" href="${baseProp || '/'}">`
+            );
+            
+            // Inject window.BASE_PATH if not already in the script
+            const basePathScript = `<script>window.BASE_PATH = "${baseProp || '/'}";</script>`;
+            htmlContent = htmlContent.replace(
+                /<script>\s*window\.BASE_PATH[^<]*<\/script>/,
+                basePathScript
+            );
+            
+            res.type('text/html').send(htmlContent);
+        } catch (error) {
+            console.error(`[serveHtmlWithBasePath] Error serving ${htmlFile}:`, error.message);
+            res.status(500).send('Error loading page');
+        }
+    };
+}
+
+// Serve HTML files with BASE_PATH support
+console.log('[app.js] Setting up dynamic HTML routes...');
+if (config.basePath) {
+    // Root path with basePath
+    app.get(`${config.basePath}/`, serveHtmlWithBasePath('index.html', config.basePath));
+    app.get(`${config.basePath}/index.html`, serveHtmlWithBasePath('index.html', config.basePath));
+    app.get(`${config.basePath}/admin`, serveHtmlWithBasePath('admin.html', config.basePath));
+    app.get(`${config.basePath}/admin.html`, serveHtmlWithBasePath('admin.html', config.basePath));
+    console.log(`[app.js] Dynamic routes registered for BASE_PATH: ${config.basePath}`);
+}
+
+// Root path without basePath (default)
+app.get('/', serveHtmlWithBasePath('index.html', config.basePath));
+app.get('/index.html', serveHtmlWithBasePath('index.html', config.basePath));
+app.get('/admin', serveHtmlWithBasePath('admin.html', config.basePath));
+app.get('/admin.html', serveHtmlWithBasePath('admin.html', config.basePath));
+console.log('[app.js] Dynamic HTML routes registered (root)');
+
 
 // Middleware
 app.use(express.json());

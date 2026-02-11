@@ -15,13 +15,6 @@ const {
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const config = require('../config');
 
-console.log('[s3Service] Config received:', {
-    bucket: config.s3.bucket,
-    region: config.s3.region,
-    hasAccessKey: !!config.aws.accessKeyId,
-    hasSecretKey: !!config.aws.secretAccessKey,
-});
-
 // Initialize S3 Client
 console.log('[s3Service] Initializing S3Client...');
 let s3Client;
@@ -47,8 +40,6 @@ try {
  */
 async function listS3Media(prefix = '') {
     try {
-        console.log(`[s3Service.listS3Media] Listing files with prefix: "${prefix}"`);
-
         const command = new ListObjectsV2Command({
             Bucket: config.s3.bucket,
             Prefix: prefix,
@@ -56,10 +47,8 @@ async function listS3Media(prefix = '') {
         });
 
         const response = await s3Client.send(command);
-        console.log(`[s3Service.listS3Media] Response:`, response);
 
         if (!response.Contents || response.Contents.length === 0) {
-            console.log(`[s3Service.listS3Media] No files found`);
             return [];
         }
 
@@ -67,8 +56,6 @@ async function listS3Media(prefix = '') {
         const mediaFiles = response.Contents.filter(
             obj => !obj.Key.endsWith('/')
         ).map(obj => obj.Key);
-
-        console.log(`[s3Service.listS3Media] Found ${mediaFiles.length} files`);
 
         // If bucket is public, return direct URLs
         if (config.s3.isPublic) {
@@ -79,7 +66,6 @@ async function listS3Media(prefix = '') {
         }
 
         // If bucket is private, generate presigned URLs
-        console.log(`[s3Service.listS3Media] Generating presigned URLs...`);
         const presignedUrls = await Promise.all(
             mediaFiles.map(async key => {
                 const signedUrl = await getSignedUrl(
@@ -90,15 +76,13 @@ async function listS3Media(prefix = '') {
                     }),
                     { expiresIn: config.s3.signedUrlExpires }
                 );
-                console.log(`[s3Service.listS3Media] Presigned URL for ${key}`);
                 return signedUrl;
             })
         );
 
-        console.log(`[s3Service.listS3Media] Generated ${presignedUrls.length} presigned URLs`);
         return presignedUrls;
     } catch (error) {
-        console.error('[s3Service.listS3Media] Error:', error);
+        console.error('[s3Service.listS3Media] Error:', error.message);
         throw error;
     }
 }
@@ -110,8 +94,6 @@ async function listS3Media(prefix = '') {
  */
 async function listS3Folders(prefix = '') {
     try {
-        console.log(`[s3Service.listS3Folders] Listing folders with prefix: "${prefix}"`);
-
         const command = new ListObjectsV2Command({
             Bucket: config.s3.bucket,
             Prefix: prefix,
@@ -119,10 +101,8 @@ async function listS3Folders(prefix = '') {
         });
 
         const response = await s3Client.send(command);
-        console.log(`[s3Service.listS3Folders] Response CommonPrefixes:`, response.CommonPrefixes);
 
         if (!response.CommonPrefixes || response.CommonPrefixes.length === 0) {
-            console.log(`[s3Service.listS3Folders] No folders found`);
             return [];
         }
 
@@ -133,10 +113,9 @@ async function listS3Folders(prefix = '') {
             return folderName;
         });
 
-        console.log(`[s3Service.listS3Folders] Found ${folders.length} folders:`, folders);
         return folders;
     } catch (error) {
-        console.error('[s3Service.listS3Folders] Error:', error);
+        console.error('[s3Service.listS3Folders] Error:', error.message);
         throw error;
     }
 }
