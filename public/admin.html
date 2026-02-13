@@ -706,6 +706,95 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Upload Progress Overlay */
+        .upload-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .upload-overlay.show {
+            display: flex;
+        }
+
+        .upload-progress {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            animation: slideIn 0.4s ease;
+        }
+
+        .upload-progress h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .progress-filename {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
+            word-break: break-word;
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .progress-bar-container {
+            background: #e0e0e0;
+            border-radius: 12px;
+            height: 10px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.6);
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .progress-details {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -727,6 +816,19 @@
             </div>
             <button type="submit">Iniciar Sesión</button>
         </form>
+    </div>
+
+    <!-- Upload Progress Overlay -->
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-progress">
+            <h3>📤 Cargando archivo...</h3>
+            <div class="progress-filename" id="progressFilename">archivo.mp4</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+            <div class="progress-details" id="progressDetails">0 MB de 0 MB</div>
+        </div>
     </div>
 
     <!-- Admin Panel -->
@@ -785,12 +887,12 @@
                             <label for="fileInput">Selecciona archivo (imagen o video)</label>
                             <input type="file" id="fileInput" required accept="image/*,video/*">
                             <small style="color: #666; margin-top: 5px; display: block;">
-                                Formatos: JPG, PNG, GIF, MP4, WebM (Max 5GB)
+                                Formatos: JPG, PNG, GIF, MP4, WebM (Max 200MB recomendado)
                             </small>
                         </div>
                         <div class="button-group">
-                            <button type="submit">Subir Archivo</button>
-                            <button type="button" onclick="hideForms()" style="background: #999;">Cancelar</button>
+                            <button type="submit" id="uploadBtn">Subir Archivo</button>
+                            <button type="button" style="background: #999;" id="cancelBtn">Cancelar</button>
                         </div>
                         <div class="success-message" id="uploadSuccess"></div>
                     </form>
@@ -804,6 +906,19 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Upload Progress Overlay -->
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-progress">
+            <h3>📤 Cargando archivo...</h3>
+            <div class="progress-filename" id="progressFilename">archivo.mp4</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+            <div class="progress-details" id="progressDetails">0 MB de 0 MB</div>
         </div>
     </div>
 
@@ -845,7 +960,7 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Login failed');
+                    throw new Error((data && data.error) || 'Login failed');
                 }
 
                 authToken = data.token;
@@ -933,7 +1048,7 @@
 
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.error);
+                if (!response.ok) throw new Error((data && data.error) || 'Error al crear carpeta');
 
                 const displayPath = currentPath ? `${currentPath}/${data.folderName}` : data.folderName;
                 successEl.textContent = `✓ Carpeta "${displayPath}" creada exitosamente`;
@@ -950,7 +1065,7 @@
         });
 
         // ============ UPLOAD FILE ============
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        document.getElementById('uploadForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const file = document.getElementById('fileInput').files[0];
             const successEl = document.getElementById('uploadSuccess');
@@ -960,34 +1075,141 @@
                 return;
             }
 
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('folder', currentFolder);
-
-                const response = await fetch(`${API_BASE}/admin/upload`, {
-                    method: 'POST',
-                    headers: {
-                        'x-admin-token': authToken,
-                    },
-                    body: formData,
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) throw new Error(data.error);
-
-                successEl.textContent = `✓ Archivo "${file.name}" subido exitosamente`;
-                successEl.classList.add('show');
-                document.getElementById('fileInput').value = '';
-                setTimeout(() => {
-                    successEl.classList.remove('show');
-                    loadFolderContents(currentFolder);
-                }, 1500);
-            } catch (err) {
-                alert('Error: ' + err.message);
+            if (!file) {
+                alert('Selecciona un archivo');
+                return;
             }
+
+            // Upload using XMLHttpRequest for progress tracking
+            uploadFileWithProgress(file, currentFolder);
         });
+
+        // Upload file with progress bar
+        function uploadFileWithProgress(file, folder) {
+            const fileSizeGB = (file.size / (1024*1024*1024)).toFixed(2);
+            const fileSizeMB = (file.size / (1024*1024)).toFixed(2);
+            console.log(`[Upload] Iniciando carga de archivo: ${file.name} (${fileSizeMB}MB / ${fileSizeGB}GB)`);
+
+            // Show overlay and progress bar
+            const overlay = document.getElementById('uploadOverlay');
+            const progressBar = document.getElementById('progressBarFill');
+            const progressText = document.getElementById('progressText');
+            const progressFilename = document.getElementById('progressFilename');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const fileInput = document.getElementById('fileInput');
+
+            overlay.classList.add('show');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            progressFilename.textContent = file.name;
+            uploadBtn.disabled = true;
+            fileInput.disabled = true;
+
+            const xhr = new XMLHttpRequest();
+
+            // Progress event
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressText.textContent = percentComplete + '%';
+                    document.getElementById('progressDetails').textContent = 
+                        `${(e.loaded / (1024*1024)).toFixed(1)} MB de ${(e.total / (1024*1024)).toFixed(1)} MB`;
+                }
+            });
+
+            // Load (success) event
+            xhr.addEventListener('load', () => {
+                let data;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch (e) {
+                    console.error('[Upload] Invalid JSON response:', xhr.responseText);
+                    overlay.classList.remove('show');
+                    uploadBtn.disabled = false;
+                    fileInput.disabled = false;
+                    alert('❌ Error del servidor: respuesta no válida');
+                    return;
+                }
+
+                if (xhr.status === 200) {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '100%';
+                    console.log('[Upload Success]', data.message);
+                    
+                    setTimeout(() => {
+                        overlay.classList.remove('show');
+                        document.getElementById('uploadSuccess').textContent = 
+                            `✓ Archivo "${file.name}" subido exitosamente`;
+                        document.getElementById('uploadSuccess').classList.add('show');
+                        document.getElementById('fileInput').value = '';
+                        uploadBtn.disabled = false;
+                        fileInput.disabled = false;
+                        
+                        setTimeout(() => {
+                            document.getElementById('uploadSuccess').classList.remove('show');
+                            loadFolderContents(folder);
+                        }, 1500);
+                    }, 500);
+                } else {
+                    overlay.classList.remove('show');
+                    uploadBtn.disabled = false;
+                    fileInput.disabled = false;
+                    const message = data.message || data.error || 'Error desconocido';
+                    console.error('[Upload Error]', message);
+                    alert('❌ Error en la carga:\n\n' + message);
+                }
+            });
+
+            // Error event
+            xhr.addEventListener('error', () => {
+                overlay.classList.remove('show');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+                console.error('[Upload Error] Network error');
+                alert('❌ Error de red durante la carga');
+            });
+
+            // Abort event
+            xhr.addEventListener('abort', () => {
+                overlay.classList.remove('show');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+                console.log('[Upload] Cancelled by user');
+            });
+
+            // Timeout (30 minutes for very large files)
+            xhr.timeout = 30 * 60 * 1000;
+            xhr.addEventListener('timeout', () => {
+                overlay.classList.remove('show');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+                alert('❌ Tiempo de espera agotado. El archivo tardó demasiado en cargar.');
+            });
+
+            // Build and send request
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', folder);
+
+            xhr.open('POST', `${API_BASE}/admin/upload`);
+            xhr.setRequestHeader('x-admin-token', authToken);
+            
+            // Add cancel button functionality while uploading
+            cancelBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                xhr.abort();
+                overlay.classList.remove('show');
+                uploadBtn.disabled = false;
+                fileInput.disabled = false;
+                document.getElementById('fileInput').value = '';
+                return false;
+            };
+
+            xhr.send(formData);
+        }
 
         // ============ LOAD FOLDERS ============
         async function loadFolders() {
@@ -1000,7 +1222,18 @@
                     headers: { 'x-admin-token': authToken },
                 });
 
-                const folders = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Handle both array response and error object with folders property
+                let folders = Array.isArray(data) ? data : (data && data.folders ? data.folders : []);
+                if (data && data.error) {
+                    console.error('[loadFolders] API error:', data.error);
+                }
+                
                 const foldersList = document.getElementById('foldersList');
                 foldersList.innerHTML = '';
 
@@ -1024,6 +1257,8 @@
                 });
             } catch (err) {
                 console.error('Error loading folders:', err);
+                const foldersList = document.getElementById('foldersList');
+                foldersList.innerHTML = '<div style="padding: 20px; text-align: center; color: #f44;">Error cargando carpetas</div>';
             }
         }
 
@@ -1100,7 +1335,18 @@
                 const data = await response.json();
                 const contentsDiv = document.getElementById('folderContents');
 
-                if (!data || (data.subfolders.length === 0 && data.files.length === 0)) {
+                // Ensure data has expected structure
+                if (!data || typeof data !== 'object') {
+                    console.error('[loadFolderContents] Invalid response:', data);
+                    contentsDiv.innerHTML = '<div class="no-content">⚠️ Error al cargar el contenido</div>';
+                    return;
+                }
+
+                // Get arrays, default to empty if missing
+                const subfolders = data.subfolders || [];
+                const files = data.files || [];
+
+                if (subfolders.length === 0 && files.length === 0) {
                     contentsDiv.innerHTML = `
                         <div class="no-content">
                             Esta carpeta está vacía
@@ -1121,15 +1367,15 @@
                 `;
 
                 // Show subfolders first
-                if (data.subfolders.length > 0) {
+                if (subfolders.length > 0) {
                     html += `
                         <h3 style="margin: 20px 0 10px 0; color: #667eea; font-size: 16px;">
-                            📁 Subcarpetas (${data.subfolders.length})
+                            📁 Subcarpetas (${subfolders.length})
                         </h3>
                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px;">
                     `;
                     
-                    data.subfolders.forEach(subfolder => {
+                    subfolders.forEach(subfolder => {
                         html += `
                             <div style="
                                 padding: 15px;
@@ -1166,15 +1412,15 @@
                 }
 
                 // Show files as cards
-                if (data.files.length > 0) {
+                if (files.length > 0) {
                     html += `
                         <h3 style="margin: 20px 0 10px 0; color: #667eea; font-size: 16px;">
-                            📄 Archivos (${data.files.length})
+                            📄 Archivos (${files.length})
                         </h3>
                         <div class="media-grid">
                     `;
 
-                    data.files.forEach(file => {
+                    files.forEach(file => {
                         const fileName = file.name;
                         const ext = fileName.split('.').pop().toLowerCase();
                         const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
@@ -1225,7 +1471,7 @@
 
                 html += `
                     <p style="margin-top: 15px; color: #666; font-size: 12px;">
-                        Total: ${data.subfolders.length} subcarpeta(s), ${data.files.length} archivo(s)
+                        Total: ${subfolders.length} subcarpeta(s), ${files.length} archivo(s)
                     </p>
                 `;
 
@@ -1249,7 +1495,7 @@
 
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.error);
+                if (!response.ok) throw new Error((data && data.error) || 'Error al borrar archivo');
 
                 alert('Archivo borrado exitosamente');
                 
@@ -1274,9 +1520,9 @@
 
                 const data = await response.json();
 
-                if (!response.ok) throw new Error(data.error);
+                if (!response.ok) throw new Error((data && data.error) || 'Error al borrar carpeta');
 
-                alert(`Carpeta borrada exitosamente (${data.filesDeleted} archivo(s) eliminado(s))`);
+                alert(`Carpeta borrada exitosamente (${data && data.filesDeleted || 0} archivo(s) eliminado(s))`);
                 
                 // Check if deleted folder is in current path
                 if (currentFolder === folderName) {

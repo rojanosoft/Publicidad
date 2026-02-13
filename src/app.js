@@ -94,6 +94,21 @@ app.get('/debug/routes', (req, res) => {
 
 console.log('✅ Health and debug routes registered');
 
+// Helper function to parse size strings (e.g., '5gb', '50mb') to bytes
+function parseSize(sizeStr) {
+    const units = { 'b': 1, 'kb': 1024, 'mb': 1024**2, 'gb': 1024**3, 'tb': 1024**4 };
+    const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*([a-z]+)$/i);
+    if (!match) return 5 * 1024 * 1024 * 1024; // Default to 5GB
+    return Math.round(parseFloat(match[1]) * (units[match[2].toLowerCase()] || 1));
+}
+
+const uploadLimitBytes = parseSize(config.media.uploadLimitSize);
+console.log(`[app.js] Upload limit configured:`, {
+    configured: config.media.uploadLimitSize,
+    bytes: uploadLimitBytes,
+    mb: Math.round(uploadLimitBytes / (1024 * 1024))
+});
+
 // Helper function to serve HTML with BASE_PATH injected
 function serveHtmlWithBasePath(htmlFile, basePath = '') {
     return (req, res) => {
@@ -145,11 +160,104 @@ app.get('/admin', serveHtmlWithBasePath('admin.html', config.basePath));
 app.get('/admin.html', serveHtmlWithBasePath('admin.html', config.basePath));
 console.log('[app.js] Dynamic HTML routes registered (root)');
 
+app.get('/api/debug/upload-config', (req, res) => {
+    const bodyBytes = typeof config.media.bodyParserLimit === 'string' 
+        ? parseSize(config.media.bodyParserLimit)
+        : config.media.bodyParserLimit;
+    const rawBytes = typeof config.media.rawBodyLimit === 'string' 
+        ? parseSize(config.media.rawBodyLimit)
+        : config.media.rawBodyLimit;
+    
+    res.json({
+        uploadLimit: {
+            configured: config.media.uploadLimitSize,
+            bytes: uploadLimitBytes,
+            mb: Math.round(uploadLimitBytes / (1024 * 1024)),
+            gb: (uploadLimitBytes / (1024 * 1024 * 1024)).toFixed(2),
+        },
+        bodyParserLimit: {
+            configured: config.media.bodyParserLimit,
+            bytes: bodyBytes,
+            mb: Math.round(bodyBytes / (1024 * 1024)),
+            gb: (bodyBytes / (1024 * 1024 * 1024)).toFixed(2),
+        },
+        rawBodyLimit: {
+            configured: config.media.rawBodyLimit,
+            bytes: rawBytes,
+            mb: Math.round(rawBytes / (1024 * 1024)),
+            gb: (rawBytes / (1024 * 1024 * 1024)).toFixed(2),
+        },
+        environment: {
+            NODE_ENV: process.env.NODE_ENV,
+            UPLOAD_LIMIT: process.env.UPLOAD_LIMIT || 'NOT SET',
+            BODY_PARSER_LIMIT: process.env.BODY_PARSER_LIMIT || 'NOT SET',
+            RAW_BODY_LIMIT: process.env.RAW_BODY_LIMIT || 'NOT SET',
+        },
+        note: 'All limits must be >= your largest file size'
+    });
+});
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(fileUpload());
+
+// Middleware - Parse size limit strings to bytes if needed
+const bodyLimitSize = typeof config.media.bodyParserLimit === 'string' 
+    ? parseSize(config.media.bodyParserLimit)
+    : config.media.bodyParserLimit;
+
+const rawLimitSize = typeof config.media.rawBodyLimit === 'string' 
+    ? parseSize(config.media.rawBodyLimit)
+    : config.media.rawBodyLimit;
+
+console.log(`[app.js] Middleware limits:`, {
+    bodyParserLimit: config.media.bodyParserLimit,
+    bodyLimitBytes: bodyLimitSize,
+    bodyLimitMB: Math.round(bodyLimitSize / (1024 * 1024)),
+});
+
+app.use(express.json({ limit: bodyLimitSize }));
+app.use(express.urlencoded({ extended: true, limit: bodyLimitSize }));
+app.use(express.raw({ limit: rawLimitSize }));
+
+// File upload middleware with proper error handling
+const getTempDir = () => {
+    // Use system temp directory
+    if (process.env.TEMP) return process.env.TEMP; // Windows
+    if (process.env.TMP) return process.env.TMP;   // Alternative Windows
+    if (process.env.TMPDIR) return process.env.TMPDIR; // Unix/Linux/Mac
+    return '/tmp'; // Fallback
+};
+
+const tempDir = getTempDir();
+console.log(`[app.js] Temp directory for uploads: ${tempDir}`);
+
+app.use(fileUpload({
+    limits: { fileSize: uploadLimitBytes },
+    useTempFiles: true,  // Use temp files for large uploads instead of memory
+    tempFileDir: tempDir,
+    abortOnLimit: false, // Don't abort - handle error manually
+    createParentPath: true,
+    safeFileNames: true,
+    preserveExtension: true,
+}));
+
+// Middleware to handle file upload limit errors and convert to JSON
+app.use((req, res, next) => {
+    // Check if fileUpload set an error flag
+    if (req.files && req.files.file && req.files.file.truncated) {
+        const maxSizeGB = (uploadLimitBytes / (1024**3)).toFixed(2);
+        console.error('[fileUpload] File was truncated - exceeds size limit');
+        console.error(`[fileUpload] Current limit: ${maxSizeGB}GB (${uploadLimitBytes} bytes)`);
+        return res.status(413).json({
+            error: 'File size exceeds maximum allowed',
+            maxSizeGB: parseFloat(maxSizeGB),
+            maxSizeBytes: uploadLimitBytes,
+            message: 'Check UPLOAD_LIMIT environment variable',
+            hint: 'Current UPLOAD_LIMIT: ' + config.media.uploadLimitSize,
+        });
+    }
+    next();
+});
+
+console.log('[app.js] Middleware configured with limits');
 
 // Serve static files with base path support
 console.log('[app.js] Setting up static files...');
@@ -190,7 +298,7 @@ console.log(`/api/admin mounted at ${apiPrefix}/admin - Stack length:`, app._rou
 
 console.log('Routes mounted successfully');
 
-// 404 Debug handler - LOG ALL UNMATCHED ROUTES (MUST BE LAST MIDDLEWARE)
+// 404 Debug handler - LOG ALL UNMATCHED ROUTES
 app.use((req, res) => {
     console.log(`[404 DEBUG] No route matched for ${req.method} ${req.path}`);
     console.log(`[404 DEBUG] Stack length: ${app._router?.stack?.length}`);
@@ -203,13 +311,56 @@ app.use((req, res) => {
     });
 });
 
-// Error handling middleware (MUST BE LAST)
+// Global error handling middleware (MUST BE LAST - 4 parameters required for Express to recognize as error handler)
 app.use((err, req, res, _next) => {
-    console.error('[Error]', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: config.nodeEnv === 'development' ? err.message : undefined,
+    const status = err.status || err.statusCode || 500;
+    
+    console.error('[Global Error Handler]', {
+        message: err.message,
+        status: status,
+        code: err.code,
+        type: err.type,
     });
+    
+    // If response headers already sent, pass to default handler
+    if (res.headersSent) {
+        return _next(err);
+    }
+
+    // Handle 413 Payload Too Large
+    if (status === 413 || err.type === 'entity.too.large' || err.code === 'LIMIT_FILE_SIZE') {
+        console.error('[413 Error] File/Payload too large');
+        const bodyBytes = typeof config.media.bodyParserLimit === 'string' 
+            ? parseSize(config.media.bodyParserLimit)
+            : config.media.bodyParserLimit;
+        
+        return res.status(413).json({
+            error: 'Payload too large',
+            message: 'El archivo o payload excede el límite permitido',
+            currentLimits: {
+                uploadLimit: `${(uploadLimitBytes / (1024**3)).toFixed(2)} GB`,
+                bodyParserLimit: `${(bodyBytes / (1024**3)).toFixed(2)} GB`,
+            },
+            environmentVars: {
+                UPLOAD_LIMIT: process.env.UPLOAD_LIMIT || 'NOT SET (default 1gb)',
+                BODY_PARSER_LIMIT: process.env.BODY_PARSER_LIMIT || 'NOT SET (default 1gb)',
+            },
+            suggestion: 'Visit /api/debug/upload-config to verify limits',
+        });
+    }
+    
+    // Ensure we always respond with JSON
+    const response = {
+        error: err.message || 'Internal Server Error',
+        status: status,
+    };
+    
+    if (config.nodeEnv === 'development') {
+        response.details = err.details || err.stack;
+        response.code = err.code;
+    }
+    
+    res.status(status).json(response);
 });
 
 // Handle uncaught errors to prevent crashes

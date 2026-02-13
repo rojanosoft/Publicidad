@@ -65,12 +65,18 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 ## Critical Development Rules
 
 ### Environment Configuration
-- **Local**: `.env` file loaded via dotenv (see [.env](.env) for structure)
+- **Local**: `.env` file loaded via dotenv (see [.env.example](.env.example) for structure)
 - **Production**: Environment variables set in Render dashboard (see [render.yaml](render.yaml))
 - **Config Access**: Always import from `require('./config')`, never read `process.env` directly in business logic
 - **AWS Credentials**: NEVER commit to git. Use `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` env vars
 - **PORT is REQUIRED**: No fallback - must be set in `.env` file (e.g., `PORT=3001`). App will exit if not set.
 - **BASE_PATH (optional)**: For subdirectory deployment (e.g., `BASE_PATH=/publicidad` for dominio.com/publicidad). Leave empty for root deployment.
+- **Upload Limits (CRITICAL)**:
+  - `UPLOAD_LIMIT`: Max file size for express-fileupload (default 1gb). Format: '200mb', '500mb', '1gb'
+  - `BODY_PARSER_LIMIT`: Max size for JSON/form bodies (default 1gb). Must be >= UPLOAD_LIMIT
+  - `RAW_BODY_LIMIT`: Max raw body size (default 1gb)
+  - **ERROR 413 Fix**: If getting "Payload too large" in production, ensure these are set in Render environment AND match Nginx `client_max_body_size`
+  - **Example for 500MB files**: Set all three to `500mb` in Render dashboard
 
 ### S3 Service Patterns
 - Presigned URL generation required when `S3_PUBLIC=false` (default for security)
@@ -79,11 +85,12 @@ Browser → GET /api/media/media-files?prefix=folder/ → s3Service.listS3Media(
 - Prefix handling: Always ensure trailing `/` for S3 folder prefixes
 
 ### Debugging & Logging
-- **Logging Strategy**: Minimal logging in production - only error logs for debugging purposes
-- **Error-only logging**: Recent cleanup removed verbose console.log calls, keeping only `console.error()` for issues
-- Format for errors: `console.error('[module.function] message')` for grep-ability (e.g., `console.error('[s3Service.listS3Media] Error:', error.message)`)
-- Module load logging: Module initialization logs only on errors (not ✅ indicators anymore)
-- Debug route: `GET /debug/routes` available but no longer logs all requests to terminal
+- **Logging Strategy**: Verbose logging during module initialization with ✅/❌ indicators for debugging
+- **Format**: All logs use `[module.function]` prefix for grep-ability (e.g., `console.log('[s3Service] ✅ S3Client initialized')`; `console.error('[media.js] ❌ FAILED to load config')`)
+- **Module Init Pattern**: Each module logs `=== MODULE_NAME.JS LOADING ===` on startup, then detailed checks with ✅/❌ for critical resources
+  - See [app.js](src/app.js#L7-L24), [config.js](src/config.js#L1-L28), [s3Service.js](src/services/s3Service.js#L1-L28)
+- **Error Logging**: Errors include full stack traces: `console.error('[function]', error.message); console.error('[function] Error stack:', error.stack);`
+- Debug route: `GET /debug/routes` available to inspect registered routes
 - Use [check-server.js](check-server.js) before deployment to verify environment setup  
 - CRITICAL ERROR HANDLING: Process-level handlers for `uncaughtException` and `unhandledRejection` log but don't exit (prevents crashes)
 
@@ -242,19 +249,19 @@ const isVideo = videoExtensions.some(ext => filename.toLowerCase().endsWith(ext)
 ## Project Architecture Highlights
 
 ### Recent Improvements (Current Development Phase)
-- **Hierarchical Subfolder Support**: Both admin and public interfaces now support unlimited folder nesting via S3 prefixes
+- **Hierarchical Subfolder Support**: Both admin and public interfaces support unlimited folder nesting via S3 prefixes
   - Backend: `/api/admin/folders` and `/api/media/s3-folders` return consistent `{name, fullPath}` format
-  - Frontend: `currentPath` state tracks position; breadcrumb shows full navigation path
+  - Frontend: `currentPath` state tracks navigation position; breadcrumb shows full navigation path
 - **Media Preview System**: Admin panel displays media thumbnails with proper URL handling
   - Short-lived presigned URLs (1 hour) for private buckets
-  - Direct URLs for public buckets (config-driven)
+  - Direct URLs for public buckets (config-driven via `S3_PUBLIC` flag)
   - Images render instantly, videos show play icon overlay
-- **Event Handling Improvements**: Single vs double-click detection with 250ms timeout
+- **Event Handling Pattern**: Single vs double-click detection with 250ms timeout
   - Eliminates conflict between single-click (load media) and double-click (enter subfolder)
-  - Uses `clickTimeout` variable with `setTimeout()` and `clearTimeout()` coordination
-- **Logging Optimization**: Converted from verbose logging to error-only pattern
-  - Reduced console noise while maintaining debuggability
-  - Format: `console.error('[module.function] message')` for grep-ability
+  - Uses `clickTimeout` variable with `setTimeout()` and `clearTimeout()` coordination in [public/js/app.js](public/js/app.js#L65-L85)
+- **Verbose Logging**: Comprehensive startup logs with ✅/❌ indicators for config verification
+  - Helps troubleshoot environment variable issues before runtime errors occur
+  - Each module reports success/failure with full error stacks
 
 ### API Response Consistency
 - All folder endpoints return: `{name: string, fullPath: string}`

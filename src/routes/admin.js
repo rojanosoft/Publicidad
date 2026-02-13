@@ -89,6 +89,7 @@ router.post('/create-folder', authMiddleware, async (req, res) => {
  * Upload a file to S3
  * Form data: file, folder
  * Header: x-admin-token
+ * IMPORTANT: Check UPLOAD_LIMIT env var if you get 413 errors on large files
  */
 router.post('/upload', authMiddleware, async (req, res) => {
     try {
@@ -97,10 +98,23 @@ router.post('/upload', authMiddleware, async (req, res) => {
         }
 
         const file = req.files.file;
+
+        // Check if file was truncated (size limit exceeded)
+        if (file.truncated) {
+            console.error(`[/api/admin/upload] File truncated - exceeds size limit`);
+            return res.status(413).json({
+                error: 'Archivo demasiado grande',
+                message: 'El archivo excede el límite de tamaño permitido (máx: 5GB)',
+                maxSizeGB: 5,
+                receivedSizeGB: file.size ? (file.size / (1024**3)).toFixed(2) : 'unknown',
+                hint: 'Contacta al administrador e incrementa UPLOAD_LIMIT si necesitas archivos más grandes'
+            });
+        }
+
         const folder = req.body.folder || 'uploads';
         const fileExt = file.name.split('.').pop().toLowerCase();
 
-        console.log(`[/api/admin/upload] Uploading file: ${file.name} to folder: ${folder}`);
+        console.log(`[/api/admin/upload] Uploading file: ${file.name} (${Math.round(file.size / (1024*1024))}MB) to folder: ${folder}`);
 
         // Validate file type
         const allowedExtensions = [
@@ -114,10 +128,13 @@ router.post('/upload', authMiddleware, async (req, res) => {
             });
         }
 
-        // Check file size
+        // Check file size against configured limit
         if (file.size > config.media.maxFileSize) {
-            return res.status(400).json({
-                error: `File too large. Max size: 5GB`,
+            const maxSizeGB = config.media.maxFileSize / (1024**3);
+            const fileSizeGB = file.size / (1024**3);
+            console.error(`[/api/admin/upload] File too large: ${fileSizeGB.toFixed(2)}GB > ${maxSizeGB.toFixed(2)}GB`);
+            return res.status(413).json({
+                error: `File too large. Max size: ${maxSizeGB.toFixed(2)}GB. Your file: ${fileSizeGB.toFixed(2)}GB`
             });
         }
 
@@ -125,16 +142,25 @@ router.post('/upload', authMiddleware, async (req, res) => {
         const uniqueFilename = `${Date.now()}_${file.name}`;
         const s3Key = `${folder}/${uniqueFilename}`;
 
-        // Upload to S3 - use Buffer to avoid stream warnings
+        // Upload to S3 using stream from temp file (for large files)
+        const fs = require('fs');
+        const fileStream = fs.createReadStream(file.tempFilePath);
+        
         const uploadCommand = new PutObjectCommand({
             Bucket: config.s3.bucket,
             Key: s3Key,
-            Body: Buffer.from(file.data),  // Convert to Buffer to avoid AWS SDK warning
+            Body: fileStream,  // Use stream instead of Buffer for large files
             ContentType: file.mimetype,
             ContentLength: file.size,  // Explicitly set content length
         });
 
         await s3Client.send(uploadCommand);
+        
+        // Clean up temp file
+        fs.unlink(file.tempFilePath, (err) => {
+            if (err) console.error('[/api/admin/upload] Error deleting temp file:', err.message);
+        });
+        
         console.log(`[/api/admin/upload] File uploaded: ${s3Key}`);
 
         res.json({
@@ -144,6 +170,16 @@ router.post('/upload', authMiddleware, async (req, res) => {
         });
     } catch (error) {
         console.error('[/api/admin/upload] Error:', error.message);
+        
+        // Check for file size limit errors
+        if (error.message.includes('limit') || error.message.includes('413')) {
+            console.error('[/api/admin/upload] File size limit error detected');
+            return res.status(413).json({ 
+                error: 'File too large. Check UPLOAD_LIMIT environment variable. Default: 5GB',
+                details: error.message 
+            });
+        }
+        
         res.status(500).json({ error: error.message });
     }
 });
@@ -181,10 +217,13 @@ router.get('/folders', authMiddleware, async (req, res) => {
             : [];
 
         console.log(`[/api/admin/folders] Found ${folders.length} folders`);
+        // Always return an array (empty array if no folders found)
         res.json(folders);
     } catch (error) {
         console.error('[/api/admin/folders] Error:', error.message);
-        res.status(500).json({ error: error.message });
+        console.error('[/api/admin/folders] Error details:', error.stack);
+        // Return proper error response so frontend can handle it
+        res.status(500).json({ error: error.message, folders: [] });
     }
 });
 
@@ -269,7 +308,8 @@ router.get('/folder-contents', authMiddleware, async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('[/api/admin/folder-contents] Error:', error.message);
-        res.status(500).json({ error: error.message });
+        // Return structure with error flag for frontend to handle
+        res.status(500).json({ subfolders: [], files: [], total: 0, error: error.message });
     }
 });
 

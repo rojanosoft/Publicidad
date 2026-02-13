@@ -60,6 +60,10 @@ const config = {
         videoExtensions: ['mp4', 'webm'],
         localMediaPath: './public/media',
         maxFileSize: 5 * 1024 * 1024 * 1024, // 5GB max file size
+        // Upload middleware limits (in bytes or string with unit: '5gb', '50mb')
+        uploadLimitSize: process.env.UPLOAD_LIMIT || '1gb',
+        bodyParserLimit: process.env.BODY_PARSER_LIMIT || '1gb',
+        rawBodyLimit: process.env.RAW_BODY_LIMIT || '1gb',
     },
 
     // Logging

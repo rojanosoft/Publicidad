@@ -22,6 +22,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: process.env.PORT,
+      BASE_PATH: process.env.BASE_PATH,
       S3_BUCKET: process.env.S3_BUCKET,
       S3_REGION: process.env.S3_REGION,
       S3_PUBLIC: process.env.S3_PUBLIC,
@@ -30,12 +31,17 @@ module.exports = {
       AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
       ADMIN_USERNAME: process.env.ADMIN_USERNAME,
       ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-      ADMIN_SECRET: process.env.ADMIN_SECRET
+      ADMIN_SECRET: process.env.ADMIN_SECRET,
+      // Upload limits - CRITICAL for large files
+      UPLOAD_LIMIT: process.env.UPLOAD_LIMIT || '1gb',
+      BODY_PARSER_LIMIT: process.env.BODY_PARSER_LIMIT || '1gb',
+      RAW_BODY_LIMIT: process.env.RAW_BODY_LIMIT || '1gb'
     },
     env_development: {
       NODE_ENV: 'development',
       DEBUG: 'true',
       PORT: process.env.PORT,
+      BASE_PATH: process.env.BASE_PATH,
       S3_BUCKET: process.env.S3_BUCKET,
       S3_REGION: process.env.S3_REGION,
       S3_PUBLIC: process.env.S3_PUBLIC,
@@ -44,7 +50,11 @@ module.exports = {
       AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
       ADMIN_USERNAME: process.env.ADMIN_USERNAME,
       ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-      ADMIN_SECRET: process.env.ADMIN_SECRET
+      ADMIN_SECRET: process.env.ADMIN_SECRET,
+      // Upload limits - CRITICAL for large files
+      UPLOAD_LIMIT: process.env.UPLOAD_LIMIT || '1gb',
+      BODY_PARSER_LIMIT: process.env.BODY_PARSER_LIMIT || '1gb',
+      RAW_BODY_LIMIT: process.env.RAW_BODY_LIMIT || '1gb'
     },
     
     // Logging

@@ -29,9 +29,16 @@ echo "✅ .env loaded - PORT=$PORT"
 # Create logs directory if it doesn't exist
 mkdir -p logs
 
-# Start with ecosystem config (which now loads .env)
-echo "🚀 Starting with PM2..."
-pm2 start ecosystem.config.js
+# Check if process already exists
+PM2_EXISTS=$(pm2 list | grep publicidad | wc -l)
+
+if [ $PM2_EXISTS -gt 0 ]; then
+    echo "🔄 Restarting existing PM2 process with updated environment..."
+    pm2 restart ecosystem.config.js --update-env
+else
+    echo "🚀 Starting new PM2 process..."
+    pm2 start ecosystem.config.js
+fi
 
 # Save PM2 configuration
 echo "💾 Saving PM2 configuration..."
